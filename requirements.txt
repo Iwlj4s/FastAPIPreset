@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+aiosqlite
+SQLAlchemy
+starlette
+passlib
+pydantic
+python-dotenv
+greenlet
