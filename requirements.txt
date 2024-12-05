@@ -7,3 +7,4 @@ passlib
 pydantic
 python-dotenv
 greenlet
+itsdangerous
