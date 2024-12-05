@@ -32,9 +32,6 @@ async def get_user(request: Request, response: Response):
     user = request.session.get('user')
     if not user:
         response.status_code = status.HTTP_401_UNAUTHORIZED
-        return {
-            'message': "Unauthorizied",
-            'status_code': 401
-        }
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
 
     return user
