@@ -1,12 +1,11 @@
 from fastapi import Request, HTTPException, status, Depends
 from starlette.responses import Response
 
-import random
-
 from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 
 from database import shema
+from database.database import get_db
 
 
 # create user's log in shema
@@ -28,8 +27,14 @@ async def add_user_in_session(db: AsyncSession, request: Request, response: Resp
     return user
 
 
-async def get_user(request: Request, response: Response):
-    user = request.session.get('user')
+async def get_user(request: Request, response: Response, db: AsyncSession = Depends(get_db)):
+    user_email = request.session.get('user')
+    if not user_email:
+        response.status_code = status.HTTP_401_UNAUTHORIZED
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
+
+    user = await ... # get by email
+
     if not user:
         response.status_code = status.HTTP_401_UNAUTHORIZED
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Unauthorized")
