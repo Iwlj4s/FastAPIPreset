@@ -5,15 +5,16 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from starlette import status
 from starlette.responses import Response
 
-from database import shema, models
+from database import schema, models
 
 from DAO.general_dao import GeneralDAO
 from DAO.something_dao import SomethingDao
 from database.database import get_db
 
 
-async def create_something(request: shema.Something,
+async def create_something(request: schema.Something,
                            response: Response,
+                           current_user: schema.User,
                            db: AsyncSession = Depends(get_db)):
     name = await SomethingDao.get_something_name(db=db, something_name=request.name)
 
@@ -26,7 +27,8 @@ async def create_something(request: shema.Something,
         }
 
     new_something = await SomethingDao.create_something(db=db,
-                                                        request=request)
+                                                        request=request,
+                                                        user_id=current_user.id)
     await db.refresh(new_something)
 
     return {
@@ -34,7 +36,8 @@ async def create_something(request: shema.Something,
         "status_code": 200,
         "data": {
             "id": new_something.id,
-            "name": new_something.name
+            "name": new_something.name,
+            "user_id": new_something.user_id
         }
     }
 

@@ -2,26 +2,31 @@ from fastapi import Depends, APIRouter, Response
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from database import shema
+from database import schema
 from database.database import get_db
 
 from repository import main_repository
 from repository.main_repository import create_something, show_something
+from repository.user_repository import get_current_user
 
-main_router = APIRouter(
+something_router = APIRouter(
     prefix="/something/API",
-    tags=["main router"]
+    tags=["something_router"]
 )
 
 
-@main_router.post("/create_something")
+@something_router.post("/create_something")
 async def add_something(response: Response,
-                        request: shema.Something,
+                        request: schema.Something,
+                        current_user: schema.User = Depends(get_current_user),
                         db: AsyncSession = Depends(get_db)):
-    return await main_repository.create_something(request=request, response=response, db=db)
+    return await main_repository.create_something(request=request,
+                                                  response=response,
+                                                  current_user=current_user,
+                                                  db=db)
 
 
-@main_router.get("/get_something/{something_id}")
+@something_router.get("/get_something/{something_id}")
 async def get_something(something_id: int,
                         response: Response,
                         db: AsyncSession = Depends(get_db)):
