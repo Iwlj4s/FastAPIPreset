@@ -1,1 +1,6 @@
 .venv
+.idea
+__pycache__
+database.db
+versions
+.env

@@ -6,18 +6,43 @@ from config import settings
 
 load_dotenv()
 
-SQLALCHEMY_DB_URL = settings.DATABASE_URL
+"""
+Database management module.
+Supports both SQLite (for development) and PostgreSQL (for production).
+"""
 
-engine = create_async_engine(url=SQLALCHEMY_DB_URL, connect_args={"check_same_thread": False})
-SessionLocal = async_sessionmaker(autocommit=False, autoflush=False, bind=engine)
+# SQLITE (uncomment to use SQLite)
+# SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
 
+# PostgreSQL (recommended for production)
+SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL_POSTGRE
+
+# Create async database engine
+engine = create_async_engine(
+    SQLALCHEMY_DATABASE_URL,
+    echo=True,  # SQL query logging (disable in production)
+    future=True,     # Use new SQLAlchemy 2.0 features
+    pool_pre_ping=True,  # Check connection before use  
+    pool_recycle=300,    # Reconnect every 300 seconds
+)
+
+# Create async session factory
+SessionLocal = async_sessionmaker(autocommit=False,  # Autocommit disabled for explicit transaction management
+                                  autoflush=False,  # Autoflush disabled
+                                  bind=engine)  # Bind to created engine
+
+# Base class for all SQLAlchemy models
 Base = declarative_base()
 
-
 async def get_db():
+    """
+    Dependency for getting database session.
+    Used in Depends() to inject session into routes.
+    
+    Ensures proper session closure after request completion.
+    """
     async with SessionLocal() as db:
         try:
-            yield db
-
+            yield db    # Provide session for use
         finally:
-            await db.close()
+            await db.close()    # Always close session

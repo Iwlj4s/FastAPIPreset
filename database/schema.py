@@ -2,29 +2,24 @@ from pydantic import BaseModel, Field
 
 from typing import Union
 
+"""
+Pydantic schemas for data validation and serialization.
+Used for request/response data modeling.
+"""
 
-class Something(BaseModel):
-    name: Union[str, None] = Field(default=None, min_length=3, title="Имя чего то")
+class Item(BaseModel):
+    """Schema for item creation and validation"""
+    name: Union[str, None] = Field(default=None, min_length=3, title="Item name")
 
 
 class User(BaseModel):
-    name: Union[str, None] = Field(default=None, min_length=3, title="Имя пользователя")
-    email: Union[str, None] = Field(default=None, title="Эл.почта пользователя")
-    password: Union[str, None] = Field(default=None, min_length=4, title="Пароль пользователя")
+    """Schema for user registration and validation"""
+    name: Union[str, None] = Field(default=None, min_length=3, title="User name")
+    email: Union[str, None] = Field(default=None, title="User's email")
+    password: Union[str, None] = Field(default=None, min_length=4, title="User's password")
 
 
 class UserSignIn(BaseModel):
-    email: Union[str, None] = Field(default=None, title="Эл.почта пользователя")
-    password: Union[str, None] = Field(default=None, min_length=4, title="Пароль пользователя")
-
-
-
-# Token #
-class Token(BaseModel):
-    access_token: str
-    token_type: str
-
-
-class TokenData(BaseModel):
-    email: Union[str, None] = None
-    id: int
+    """Schema for user login authentication"""
+    email: Union[str, None] = Field(default=None, title="User's email")
+    password: Union[str, None] = Field(default=None, min_length=4, title="User's password")

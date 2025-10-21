@@ -1,16 +1,17 @@
-from fastapi import Depends, HTTPException
+from fastapi import Depends
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from starlette import status
 from starlette.responses import Response
 
-from DAO.something_dao import SomethingDao
+from DAO.item_dao import ItemDao
 from database.database import get_db
 from database import models, schema
 
 from helpers import password_helper, user_helper
-from helpers.general_helper import CheckHTTP404NotFound, CheckHTTP401Unauthorized
+from helpers import general_helper
+from helpers.general_helper import CheckHTTP404NotFound
 from helpers.token_helper import get_token, verify_token
 
 from DAO.general_dao import GeneralDAO
@@ -19,12 +20,33 @@ from DAO.user_dao import UserDAO
 from helpers import password_helper
 
 
+"""
+User business logic layer.
+Handles user authentication, registration, and user-related operations.
+"""
+
+
 async def sign_up(request: schema.User,
                   response,
                   db: AsyncSession):
+    
+    """
+    Register a new user in the system.
+    Validates email and username uniqueness.
+    
+    :param request: User registration data
+    :param response: HTTP response object
+    :param db: Database session
+
+    :return: Success response with user data or error
+    :raises HTTPException: 409 if email or username already exists
+    """
+    # Check for existing email
     email = await UserDAO.get_user_email(db=db, user_email=str(request.email))
+    # Check for existing username
     name = await UserDAO.get_user_name(db=db, user_name=str(request.name))
 
+    # Return conflict error if email exists
     if email:
         response.status_code = status.HTTP_409_CONFLICT
 
@@ -33,7 +55,7 @@ async def sign_up(request: schema.User,
             'status_code': 409,
             'error': "CONFLICT"
         }
-
+    # Return conflict error if username exists
     if name:
         response.status_code = status.HTTP_409_CONFLICT
 
@@ -42,7 +64,8 @@ async def sign_up(request: schema.User,
             'status_code': 409,
             'error': "CONFLICT"
         }
-
+    
+    # Hash password and create new user
     hash_password = password_helper.hash_password(request.password)
     new_user = models.User(name=request.name, email=request.email, password=hash_password)
     db.add(new_user)
@@ -65,10 +88,20 @@ async def sign_up(request: schema.User,
 async def login(request: schema.UserSignIn,
                 response: Response,
                 db: AsyncSession):
+    
+    """
+    Authenticate user and generate access token.
+    
+    :param request: User login credentials
+    :param response: HTTP response object
+    :param db: Database session
+
+    :return: User data with access token or error
+    """
     user = await user_helper.take_access_token_for_user(db=db,
                                                         response=response,
                                                         request=request)
-
+    # Return error if authentication failed
     if response.status_code == status.HTTP_403_FORBIDDEN:
         return {
             'message': "Invalid email and/or password",
@@ -86,6 +119,16 @@ async def login(request: schema.UserSignIn,
 
 async def get_current_user(db: AsyncSession = Depends(get_db),
                            token: str = Depends(get_token)):
+    """
+    Get current authenticated user from JWT token.
+    Used as dependency in protected routes.
+    
+    :param db: Database session
+    :param token: JWT token from request
+
+    :return: User object or error response
+    :raises HTTPException: 401 if token invalid or user not found
+    """
     user_id = verify_token(token=token)
     print("user_id in get current user: ", user_id)
     if not user_id:
@@ -98,26 +141,73 @@ async def get_current_user(db: AsyncSession = Depends(get_db),
     return user
 
 
-async def get_current_user_somethings(current_user: schema.User, db: AsyncSession = Depends(get_db)):
-    somethings = await SomethingDao.get_somethings_by_user_id(db=db, user_id=current_user.id)
-    await CheckHTTP404NotFound(founding_item=somethings, text="Записи не найдены!")
+async def get_current_user_items(current_user: schema.User, 
+                                 db: AsyncSession = Depends(get_db)):
+    """
+    Get all items belonging to the current authenticated user.
+    
+    :param current_user: Authenticated user
+    :param db: Database session
+
+    :return: User's items
+    :raises HTTPException: 404 if no items found
+    """
+    items = await ItemDao.get_items_by_user_id(db=db, user_id=current_user.id)
+    await CheckHTTP404NotFound(founding_item=items, text="Item's not found")
 
     return {
         "user_id": current_user.id,
         "user_name": current_user.name,
-        "somethings": somethings
+        "items": items
     }
 
 
-async def get_current_user_something(something_id: int,
-                                     current_user: schema.User,
-                                     response: Response,
-                                     db: AsyncSession = Depends(get_db)):
-    something = await SomethingDao.get_something_by_user_id(db=db, user_id=current_user.id, something_id=something_id)
-    await CheckHTTP404NotFound(founding_item=something, text="Запись не найдена!")
+async def get_current_user_item(response: Response,
+                                 item_id: int,
+                                 current_user: schema.User,
+                                 db: AsyncSession = Depends(get_db)):
+    """
+    Get specific item belonging to the current user.
+    
+    :param response: HTTP response object
+    :param item_id: ID of item to retrieve
+    :param current_user: Authenticated user
+    :param db: Database session
+
+    :return: User's specific item
+    :raises HTTPException: 404 if item not found or doesn't belong to user
+    """
+    
+    item = await ItemDao.get_item_by_user_id(db=db, 
+                                             user_id=current_user.id, 
+                                             item_id=item_id)
+    await CheckHTTP404NotFound(founding_item=item, text="Item not found")
 
     return {
         "user_id": current_user.id,
         "user_name": current_user.name,
-        "something": something
+        "item": item
     }
+
+
+async def get_all_users(db: AsyncSession):
+    """
+    Retrieve all users from the system with their items.
+    
+    :param db: Database session
+    :return: List of all users with their items
+    :raises HTTPException: 404 if no users found
+    """
+    users = await GeneralDAO.get_all_items(db=db, item=models.User)
+    await general_helper.CheckHTTP404NotFound(founding_item=users, text="Users not found")
+    
+    # Format response with user items
+    users_list = []
+    for user in users:
+        users_list.append({
+            'id': user.id,
+            'user_name': user.name,
+            'user_email': user.email,
+            'items': user.item
+        })
+    return users_list

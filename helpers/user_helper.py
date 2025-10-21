@@ -9,8 +9,28 @@ from helpers import password_helper
 from helpers.jwt_helper import create_access_token
 
 
-async def take_access_token_for_user(db: AsyncSession, response: Response, request: schema.UserSignIn):
+"""
+User authentication helper functions.
+Handles login process and token generation.
+"""
+
+
+async def take_access_token_for_user(db: AsyncSession, 
+                                     response: Response, 
+                                     request: schema.UserSignIn):
+    """
+    Authenticate user and generate access token.
+    
+    :param db: Database session
+    :param response: Response object to set cookies
+    :param request: User login credentials
+    :return: User info with access token or error
+    """
+
+    # Get user by email
     user = await UserDAO.get_user_email(db=db, user_email=str(request.email))
+
+    # Check if user exists
     if not user:
         response.status_code = status.HTTP_403_FORBIDDEN
         return {
@@ -19,6 +39,7 @@ async def take_access_token_for_user(db: AsyncSession, response: Response, reque
             'error': "FORBIDDEN"
         }
 
+    # Verify password
     if not password_helper.verify_password(request.password, user.password):
         response.status_code = status.HTTP_403_FORBIDDEN
         return {
@@ -27,9 +48,10 @@ async def take_access_token_for_user(db: AsyncSession, response: Response, reque
             'error': "FORBIDDEN"
         }
 
-    # Creating access token #
+    # Create access token
     access_token = create_access_token({"sub": str(user.id)})
-    # Write access token in cookie #
+
+    # Set token in HTTP-only cookie
     response.set_cookie(key="user_access_token", value=access_token, httponly=True)
 
     return {

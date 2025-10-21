@@ -5,16 +5,22 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from database.database import get_db
 from database.schema import User
 from database import schema, models
-from helpers.general_helper import CheckHTTP404NotFound
+from helpers import general_helper
 
 from repository.user_repository import get_current_user
 from repository import user_repository
 
 from DAO.general_dao import GeneralDAO
 
+"""
+User API routes.
+Defines REST endpoints for user authentication and management.
+"""
+
+# Router configuration with prefix and tags for Swagger documentation
 user_router = APIRouter(
-    prefix="/users/API",
-    tags=["users"]
+    prefix="/users/API",    # All routes will be prefixed with /users/API
+    tags=["user_router"]    # Grouped under "Users" in Swagger UI
 )
 
 
@@ -22,6 +28,14 @@ user_router = APIRouter(
 async def sign_up(request: schema.User,
                   response: Response,
                   db: AsyncSession = Depends(get_db)):
+    """
+    Register a new user in the system.
+    
+    - **request**: User registration data (name, email, password)
+    
+    Returns created user data with 201 status code.
+    """
+
     return await user_repository.sign_up(request, response, db)
 
 
@@ -29,61 +43,103 @@ async def sign_up(request: schema.User,
 async def sign_in(request: schema.UserSignIn,
                   response: Response,
                   db: AsyncSession = Depends(get_db)):
+    """
+    Authenticate user and return access token.
+    
+    - **request**: User login credentials (email, password)
+    
+    Returns user data with JWT access token in cookie.
+    """
+
     return await user_repository.login(request, response, db)
 
 
 @user_router.post("/logout", tags=["users"])
 async def logout(response: Response):
+    """
+    Logout user by clearing authentication cookie.
+    
+    Clears the user_access_token cookie from browser.
+    """
+
     response.delete_cookie(key='user_access_token')
-    return {'message': 'Пользователь успешно вышел из системы'}
+    return {'message': 'User logout'}
 
 
 @user_router.get("/me/", status_code=200, tags=["users"])
 async def get_me(response: Response,
                  user_data: User = Depends(get_current_user)):
+    """
+    Get current authenticated user's profile.
+    Requires valid JWT token.
+    
+    Returns current user's data.
+    """
+
     return user_data
 
 
-@user_router.post("/user/{user_id}", status_code=200, tags=["users"])
+@user_router.get("/user/{user_id}", status_code=200, tags=["users"])
 async def get_user(user_id: int,
                    db: AsyncSession = Depends(get_db)):
+    """
+    Get user profile by ID.
+    Public endpoint - no authentication required.
+    
+    - **user_id**: ID of user to retrieve (path parameter)
+    
+    Returns user data with their items.
+    """
+
     user = await GeneralDAO.get_item_by_id(db=db, item=models.User, item_id=int(user_id))
-    CheckHTTP404NotFound(founding_item=user, text="Пользователь не найден")
+    await general_helper.CheckHTTP404NotFound(founding_item=user, text="User not found")
     return {
         'user_id:': user.id,
         'user_name:': user.name,
         'user_email': user.email,
-        'somethings': user.something
+        'items': user.item
     }
 
 
 @user_router.get("/users_list")
 async def get_users_for_user(db: AsyncSession = Depends(get_db)):
-    users = await GeneralDAO.get_all_items(db=db, item=models.User)
-    CheckHTTP404NotFound(founding_item=users, text="Пользователи не найдены")
-    users_list = []
-    for user in users:
-        users_list.append({
-            'id': user.id,
-            'title': user.name,
-            'user_email': user.email,
-            'somethings': user.something
-        })
+    """
+    Get list of all users in the system.
+    Public endpoint - no authentication required.
+    
+    Returns list of all users with their items.
+    """
+
+    users_list = await user_repository.get_all_users(db=db)
     return users_list
 
 
-@user_router.get("/me/somethings", status_code=200, tags=["users"])
-async def get_current_user_somethings(current_user: schema.User = Depends(get_current_user),
-                                      db: AsyncSession = Depends(get_db)):
-    return await user_repository.get_current_user_somethings(current_user=current_user, db=db)
+@user_router.get("/me/items", status_code=200, tags=["users"])
+async def get_current_user_items(current_user: schema.User = Depends(get_current_user),
+                                 db: AsyncSession = Depends(get_db)):
+    """
+    Get all items belonging to the current authenticated user.
+    Requires valid JWT token.
+    
+    Returns user's items with ownership information.
+    """
+
+    return await user_repository.get_current_user_items(current_user=current_user, db=db)
 
 
-@user_router.get("/me/{something_id}", status_code=200, tags=["users"])
-async def get_current_user_somethings(something_id: int,
-                                      response: Response,
-                                      current_user: schema.User = Depends(get_current_user),
-                                      db: AsyncSession = Depends(get_db)):
-    return await user_repository.get_current_user_something(something_id=something_id,
-                                                            current_user=current_user,
-                                                            response=response,
-                                                            db=db)
+@user_router.get("/me/item/{item_id}", status_code=200, tags=["users"])
+async def get_current_user_item(item_id: int,response: Response,
+                                current_user: schema.User = Depends(get_current_user),
+                                db: AsyncSession = Depends(get_db)):
+    """
+    Get specific item belonging to the current user.
+    Requires valid JWT token and item ownership.
+    
+    - **item_id**: ID of item to retrieve (path parameter)
+    
+    Returns specific item data with user context.
+    """
+    
+    return await user_repository.get_current_user_item(item_id=item_id,
+                                                       current_user=current_user,
+                                                       response=response,db=db)

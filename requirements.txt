@@ -3,11 +3,14 @@ uvicorn
 aiosqlite
 SQLAlchemy~=2.0.36
 starlette~=0.41.2
-passlib~=1.7.4
+passlib[bcrypt]~=1.7.4
 pydantic~=2.9.2
 python-dotenv~=1.0.1
 greenlet
 itsdangerous
 python-jose
 alembic~=1.15.1
-bcrypt
+bcrypt~=4.1.2
+aiosqlite
+asyncpg
+psycopg2-binary~=2.9.9
