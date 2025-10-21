@@ -24,7 +24,7 @@ user_router = APIRouter(
 )
 
 
-@user_router.post("/sign_up", status_code=201, tags=["users"])
+@user_router.post("/sign_up", status_code=201)
 async def sign_up(request: schema.User,
                   response: Response,
                   db: AsyncSession = Depends(get_db)):
@@ -39,7 +39,7 @@ async def sign_up(request: schema.User,
     return await user_repository.sign_up(request, response, db)
 
 
-@user_router.post("/sign_in", status_code=200, tags=["users"])
+@user_router.post("/sign_in", status_code=200)
 async def sign_in(request: schema.UserSignIn,
                   response: Response,
                   db: AsyncSession = Depends(get_db)):
@@ -54,7 +54,7 @@ async def sign_in(request: schema.UserSignIn,
     return await user_repository.login(request, response, db)
 
 
-@user_router.post("/logout", tags=["users"])
+@user_router.post("/logout")
 async def logout(response: Response):
     """
     Logout user by clearing authentication cookie.
@@ -66,7 +66,7 @@ async def logout(response: Response):
     return {'message': 'User logout'}
 
 
-@user_router.get("/me/", status_code=200, tags=["users"])
+@user_router.get("/me/", status_code=200)
 async def get_me(response: Response,
                  user_data: User = Depends(get_current_user)):
     """
@@ -79,7 +79,7 @@ async def get_me(response: Response,
     return user_data
 
 
-@user_router.get("/user/{user_id}", status_code=200, tags=["users"])
+@user_router.get("/user/{user_id}", status_code=200)
 async def get_user(user_id: int,
                    db: AsyncSession = Depends(get_db)):
     """
@@ -114,7 +114,7 @@ async def get_users_for_user(db: AsyncSession = Depends(get_db)):
     return users_list
 
 
-@user_router.get("/me/items", status_code=200, tags=["users"])
+@user_router.get("/me/items", status_code=200)
 async def get_current_user_items(current_user: schema.User = Depends(get_current_user),
                                  db: AsyncSession = Depends(get_db)):
     """
@@ -127,7 +127,7 @@ async def get_current_user_items(current_user: schema.User = Depends(get_current
     return await user_repository.get_current_user_items(current_user=current_user, db=db)
 
 
-@user_router.get("/me/item/{item_id}", status_code=200, tags=["users"])
+@user_router.get("/me/item/{item_id}", status_code=200)
 async def get_current_user_item(item_id: int,response: Response,
                                 current_user: schema.User = Depends(get_current_user),
                                 db: AsyncSession = Depends(get_db)):
@@ -139,7 +139,7 @@ async def get_current_user_item(item_id: int,response: Response,
     
     Returns specific item data with user context.
     """
-    
+
     return await user_repository.get_current_user_item(item_id=item_id,
                                                        current_user=current_user,
                                                        response=response,db=db)
