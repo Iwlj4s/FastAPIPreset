@@ -71,6 +71,7 @@ FastAPIPreset/
 ├── database/                    # Database configuration and models
 │   ├── database.py             # Database engine and session setup
 │   ├── models.py               # SQLAlchemy data models
+│   ├── response_schemas.py     # Pydantic schemas for API responses
 │   └── schema.py               # Pydantic schemas for validation
 ├── helpers/                     # Utility functions and helpers
 │   ├── general_helper.py       # HTTP error handling utilities
