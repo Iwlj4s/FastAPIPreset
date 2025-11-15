@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from starlette.responses import Response
 
-from database import schema, models
+from database import schema, models, response_schemas
 
 from helpers import general_helper
 from DAO.general_dao import GeneralDAO
@@ -84,7 +84,6 @@ async def delete_item(item_id: int,
     }
 
 
-
 async def show_item(item_id: int,
                     db: AsyncSession = Depends(get_db)):
     """
@@ -102,10 +101,18 @@ async def show_item(item_id: int,
                                            item_id=int(item_id))
     await general_helper.CheckHTTP404NotFound(founding_item=item, text="Item not found")
     
+    # Use Response Schema
+    item_data = response_schemas.ItemWithUserResponse(
+        id=item.id,
+        name=item.name,
+        user_id=item.user.id,
+        user_name=item.user.name,
+        user_email=item.user.email
+    )
+    
     return {
-        "message": "Successfull",
-        "status_code": 200,
-        "data": item
+        "message": "Successful",
+        "data": item_data
     }
 
 async def get_all_items(db: AsyncSession):
@@ -121,12 +128,16 @@ async def get_all_items(db: AsyncSession):
     await general_helper.CheckHTTP404NotFound(founding_item=items, text="Items not found")
 
     # Format response with user information
+    # Use Response Schema to avoid recursion
     items_list = []
     for item in items:
-        items_list.append({
-            'id': item.id,
-            'item_name': item.name,
-            'user_id': item.user.id,
-            'user_name': item.user.name
-        })
+        item_data = response_schemas.ItemWithUserResponse(
+            id=item.id,
+            name=item.name,
+            user_id=item.user.id,
+            user_name=item.user.name,
+            user_email=item.user.email
+        )
+        items_list.append(item_data)
+    
     return items_list

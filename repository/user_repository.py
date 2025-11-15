@@ -7,7 +7,7 @@ from starlette.responses import Response
 
 from DAO.item_dao import ItemDao
 from database.database import get_db
-from database import models, schema
+from database import models, schema, response_schemas
 
 from helpers import password_helper, user_helper
 from helpers import general_helper
@@ -147,13 +147,24 @@ async def get_current_user_items(current_user: schema.User,
     :raises HTTPException: 404 if no items found
     """
     items = await ItemDao.get_items_by_user_id(db=db, user_id=current_user.id)
-    await CheckHTTP404NotFound(founding_item=items, text="Item's not found")
+    await CheckHTTP404NotFound(items, "No items found for this user")
+
+    # Use Response Schema to avoid recursion
+    items_data = [
+        response_schemas.ItemResponse(
+            id=item.id,
+            name=item.name,
+            user_id=item.user_id
+        )
+        for item in items
+    ]
 
     return {
         "user_id": current_user.id,
         "user_name": current_user.name,
-        "items": items
+        "items": items_data
     }
+
 
 
 async def get_current_user_item(item_id: int,
@@ -176,10 +187,17 @@ async def get_current_user_item(item_id: int,
                                              item_id=item_id)
     await CheckHTTP404NotFound(founding_item=item, text="Item not found")
 
+    # Using Response Schema
+    item_data = response_schemas.ItemResponse(
+        id=item.id,
+        name=item.name,
+        user_id=item.user_id
+    )
+
     return {
         "user_id": current_user.id,
         "user_name": current_user.name,
-        "item": item
+        "item": item_data
     }
 
 
@@ -195,12 +213,22 @@ async def get_all_users(db: AsyncSession):
     await general_helper.CheckHTTP404NotFound(founding_item=users, text="Users not found")
     
     # Format response with user items
+    # Use Response Schema to avoid recursion
     users_list = []
     for user in users:
-        users_list.append({
-            'id': user.id,
-            'user_name': user.name,
-            'user_email': user.email,
-            'items': user.item
-        })
+        user_data = response_schemas.UserWithItemsResponse(
+            id=user.id,
+            name=user.name,
+            email=user.email,
+            items=[
+                response_schemas.ItemResponse(
+                    id=item.id,
+                    name=item.name,
+                    user_id=item.user_id
+                )
+                for item in user.item
+            ]
+        )
+        users_list.append(user_data)
+    
     return users_list

@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from database.database import get_db
 from database.schema import User
-from database import schema, models
+from database import schema, models, response_schemas
 from helpers import general_helper
 
 from repository.user_repository import get_current_user
@@ -91,12 +91,23 @@ async def get_user(user_id: int,
 
     user = await GeneralDAO.get_item_by_id(db=db, item=models.User, item_id=int(user_id))
     await general_helper.CheckHTTP404NotFound(founding_item=user, text="User not found")
-    return {
-        'user_id:': user.id,
-        'user_name:': user.name,
-        'user_email': user.email,
-        'items': user.item
-    }
+    
+    # Use Response Schema to avoid recursion
+    user_data = response_schemas.UserWithItemsResponse(
+        id=user.id,
+        name=user.name,
+        email=user.email,
+        items=[
+            response_schemas.ItemResponse(
+                id=item.id,
+                name=item.name,
+                user_id=item.user_id
+            )
+            for item in user.item
+        ]
+    )
+    
+    return user_data
 
 
 @user_router.get("/")
