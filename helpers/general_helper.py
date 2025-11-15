@@ -22,6 +22,18 @@ async def CheckHTTP404NotFound(founding_item, text: str):
 
     return founding_item
 
+async def CheckHTTP403FORBIDDEN_BOOL(condition: bool, text: str):
+    """
+    Checks boolean condition for access permissions.
+    If condition is True, throws HTTP 403 error.
+    
+    :param condition: Boolean condition to check
+    :param text: Error text to return
+    :raises HTTPException: 403 if condition is True
+    """
+    if condition:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=text)
+
 
 async def CheckHTTP401Unauthorized(founding_item, text: str):
     """
@@ -53,3 +65,15 @@ async def CheckHTTP409Conflict(founding_item, text: str):
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=text)
 
     return founding_item
+
+async def CheckHTTP400BadRequest(condition: bool, text: str):
+    """
+    Check for bad request data.
+    If condition is True, throws HTTP 400 error.
+    
+    :param condition: Boolean condition to check
+    :param text: Error text to return
+    :raises HTTPException: 400 if bad request detected
+    """
+    if condition:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=text)

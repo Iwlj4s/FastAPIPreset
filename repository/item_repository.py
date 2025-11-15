@@ -17,7 +17,6 @@ Handles item-related operations and coordinates between routes and DAO.
 """
 
 async def create_item(request: schema.Item,
-                      response: Response,
                       current_user: schema.User,
                       db: AsyncSession = Depends(get_db)):
     
@@ -87,7 +86,6 @@ async def delete_item(item_id: int,
 
 
 async def show_item(item_id: int,
-                    response: Response,
                     db: AsyncSession = Depends(get_db)):
     """
     Retrieve a specific item by ID.
@@ -107,7 +105,7 @@ async def show_item(item_id: int,
     return {
         "message": "Successfull",
         "status_code": 200,
-        "data": {item}
+        "data": item
     }
 
 async def get_all_items(db: AsyncSession):

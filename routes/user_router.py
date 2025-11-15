@@ -19,14 +19,13 @@ Defines REST endpoints for user authentication and management.
 
 # Router configuration with prefix and tags for Swagger documentation
 user_router = APIRouter(
-    prefix="/users/API",    # All routes will be prefixed with /users/API
+    prefix="/users",    # All routes will be prefixed with /users/API
     tags=["user_router"]    # Grouped under "Users" in Swagger UI
 )
 
 
 @user_router.post("/sign_up", status_code=201)
 async def sign_up(request: schema.User,
-                  response: Response,
                   db: AsyncSession = Depends(get_db)):
     """
     Register a new user in the system.
@@ -36,7 +35,7 @@ async def sign_up(request: schema.User,
     Returns created user data with 201 status code.
     """
 
-    return await user_repository.sign_up(request, response, db)
+    return await user_repository.sign_up(request, db)
 
 
 @user_router.post("/sign_in", status_code=200)
@@ -67,8 +66,7 @@ async def logout(response: Response):
 
 
 @user_router.get("/me/", status_code=200)
-async def get_me(response: Response,
-                 user_data: User = Depends(get_current_user)):
+async def get_me(user_data: User = Depends(get_current_user)):
     """
     Get current authenticated user's profile.
     Requires valid JWT token.
@@ -101,7 +99,7 @@ async def get_user(user_id: int,
     }
 
 
-@user_router.get("/users_list")
+@user_router.get("/")
 async def get_users_for_user(db: AsyncSession = Depends(get_db)):
     """
     Get list of all users in the system.
@@ -128,7 +126,7 @@ async def get_current_user_items(current_user: schema.User = Depends(get_current
 
 
 @user_router.get("/me/item/{item_id}", status_code=200)
-async def get_current_user_item(item_id: int,response: Response,
+async def get_current_user_item(item_id: int,
                                 current_user: schema.User = Depends(get_current_user),
                                 db: AsyncSession = Depends(get_db)):
     """
@@ -142,4 +140,4 @@ async def get_current_user_item(item_id: int,response: Response,
 
     return await user_repository.get_current_user_item(item_id=item_id,
                                                        current_user=current_user,
-                                                       response=response,db=db)
+                                                       db=db)

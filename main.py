@@ -54,8 +54,8 @@ async def startup_event():
 
 
 # Here you include your routes from /routes
-app.include_router(item_router) # Route for working with "items"
-app.include_router(user_router) # Route for working with "users"
+app.include_router(item_router, prefix="/api/v1") # Route for working with "items"
+app.include_router(user_router, prefix="/api/v1") # Route for working with "users"
 
 
 @app.get("/")

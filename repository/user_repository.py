@@ -11,7 +11,7 @@ from database import models, schema
 
 from helpers import password_helper, user_helper
 from helpers import general_helper
-from helpers.general_helper import CheckHTTP404NotFound
+from helpers.general_helper import CheckHTTP404NotFound, CheckHTTP409Conflict
 from helpers.token_helper import get_token, verify_token
 
 from DAO.general_dao import GeneralDAO
@@ -27,7 +27,6 @@ Handles user authentication, registration, and user-related operations.
 
 
 async def sign_up(request: schema.User,
-                  response,
                   db: AsyncSession):
     
     """
@@ -47,31 +46,26 @@ async def sign_up(request: schema.User,
     name = await UserDAO.get_user_name(db=db, user_name=str(request.name))
 
     # Return conflict error if email exists
-    if email:
-        response.status_code = status.HTTP_409_CONFLICT
+    await CheckHTTP409Conflict(email, "Email already exists")
 
-        return {
-            'message': "Email already exist",
-            'status_code': 409,
-            'error': "CONFLICT"
-        }
     # Return conflict error if username exists
-    if name:
-        response.status_code = status.HTTP_409_CONFLICT
+    await CheckHTTP409Conflict(name, "This username already exists")
 
-        return {
-            'message': "This username already exists",
-            'status_code': 409,
-            'error': "CONFLICT"
-        }
-    
+    print(f"   Original password from request: '{request.password}'")
+    print(f"   Password length: {len(request.password)}")
+    print(f"   Password type: {type(request.password)}")
+
     # Hash password and create new user
     hash_password = password_helper.hash_password(request.password)
+    print(f"   Hashed password: {hash_password}")
+    print(f"   Hashed password length: {len(hash_password)}")
+
     new_user = models.User(name=request.name, email=request.email, password=hash_password)
     db.add(new_user)
 
     await db.commit()
     await db.refresh(new_user)
+    print(f"   User created with ID: {new_user.id}")
 
     return {
         'message': "Register successfully",
@@ -162,10 +156,9 @@ async def get_current_user_items(current_user: schema.User,
     }
 
 
-async def get_current_user_item(response: Response,
-                                 item_id: int,
-                                 current_user: schema.User,
-                                 db: AsyncSession = Depends(get_db)):
+async def get_current_user_item(item_id: int,
+                                current_user: schema.User,
+                                db: AsyncSession = Depends(get_db)):
     """
     Get specific item belonging to the current user.
     
