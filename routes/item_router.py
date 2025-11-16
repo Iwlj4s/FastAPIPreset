@@ -1,8 +1,10 @@
 from fastapi import Depends, APIRouter, Response
-
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Dict, Any, List
 
-from database import schema
+
+from context.request_context import RequestContext, get_request_context
+from database import response_schemas, schema
 from database.database import get_db
 
 from repository import item_repository
@@ -20,42 +22,22 @@ item_router = APIRouter(
     tags=["item_router"] # Grouped under "Items" in Swagger UI
 )
 
-@item_router.post("/create_item")
-async def add_item(request: schema.Item,
-                   current_user: schema.User = Depends(get_current_user),
-                   db: AsyncSession = Depends(get_db)):
-    """
-    Create a new item for the authenticated user.
-    
-    - **request**: Item creation data (name)
-    - **current_user**: Automatically injected authenticated user
-    - **db**: Database session dependency
-    
-    Returns created item data with success message.
-    """
 
-    return await item_repository.create_item(request=request,
-                                             current_user=current_user, 
-                                             db=db)
-
-@item_router.post("/delete_item/{item_id}")
-async def delete_item(item_id: int,
-                      current_user: schema.User = Depends(get_current_user),
-                      db: AsyncSession = Depends(get_db)):
+@item_router.get("/")
+async def get_items_list(db: AsyncSession = Depends(get_db)) -> List[response_schemas.ItemWithUserResponse]:
     """
-    Delete a specific item (only if owned by current user).
+    Retrieve all items from the system with user information.
+    Public endpoint - no authentication required.
     
-    - **item_id**: ID of item to delete (path parameter)
-    - **current_user**: Authenticated user for ownership verification
-    
-    Returns success message upon deletion.
+    Returns list of all items with user details.
     """
-    return await item_repository.delete_item(db=db, item_id=item_id, user_id=current_user.id)
+    items_list = await item_repository.get_all_items(db=db)
+    return items_list
 
 
 @item_router.get("/item/{item_id}")
 async def get_item(item_id: int,
-                   db: AsyncSession = Depends(get_db)):
+                   db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
     """
     Retrieve a specific item by ID.
     No authentication required - public access.
@@ -67,13 +49,39 @@ async def get_item(item_id: int,
     return await item_repository.show_item(item_id=int(item_id),
                                            db=db)
 
-@item_router.get("/")
-async def get_items_list(db: AsyncSession = Depends(get_db)):
+
+@item_router.post("/create_item")
+async def add_item(request: schema.Item,
+                   request_context: RequestContext = Depends(get_request_context)) -> Dict[str, Any]:
     """
-    Retrieve all items from the system with user information.
-    Public endpoint - no authentication required.
+    Create a new item for the authenticated user.
     
-    Returns list of all items with user details.
+    - **request**: Item creation data (name)
+    - **request_context**: Request Context which use basic stuff:
+        - **current_user**: Automatically injected authenticated user
+        - **db**: Database session dependency
+    
+    Returns created item data with success message.
     """
-    items_list = await item_repository.get_all_items(db=db)
-    return items_list
+
+    return await item_repository.create_item(request=request,
+                                             current_user=request_context.current_user, 
+                                             db=request_context.db)
+
+
+@item_router.post("/delete_item/{item_id}")
+async def delete_item(item_id: int,
+                      request_context: RequestContext = Depends(get_request_context)) -> Dict[str, Any]:
+    """
+    Delete a specific item (only if owned by current user).
+    
+    - **item_id**: ID of item to delete (path parameter)
+    - **request_context**: Request Context which use basic stuff:
+        - **current_user**: Automatically injected authenticated user
+        - **db**: Database session dependency
+    
+    Returns success message upon deletion.
+    """
+    return await item_repository.delete_item(item_id=item_id, 
+                                             user_id=request_context.current_user.id,
+                                             db=request_context.db)

@@ -8,7 +8,7 @@ JWT token creation utilities.
 Handles generation of access tokens for user authentication.
 """
 
-def create_access_token(data: dict):
+def create_access_token(data: dict) -> str:
     """
     Create JWT access token with expiration.
     

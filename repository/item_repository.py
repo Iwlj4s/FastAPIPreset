@@ -1,6 +1,7 @@
 from fastapi import Depends
-
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Dict, Any, List
+
 
 from starlette.responses import Response
 
@@ -18,7 +19,7 @@ Handles item-related operations and coordinates between routes and DAO.
 
 async def create_item(request: schema.Item,
                       current_user: schema.User,
-                      db: AsyncSession = Depends(get_db)):
+                      db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
     
     """
     Create a new item for the current user.
@@ -57,7 +58,7 @@ async def create_item(request: schema.Item,
 
 async def delete_item(item_id: int,
                       user_id: int,
-                      db: AsyncSession):
+                      db: AsyncSession) -> Dict[str, Any]:
     """
     Delete an item with ownership verification.
     Only the item owner can delete their items.
@@ -85,7 +86,7 @@ async def delete_item(item_id: int,
 
 
 async def show_item(item_id: int,
-                    db: AsyncSession = Depends(get_db)):
+                    db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
     """
     Retrieve a specific item by ID.
     No ownership check - any authenticated user can view any item.
@@ -115,7 +116,7 @@ async def show_item(item_id: int,
         "data": item_data
     }
 
-async def get_all_items(db: AsyncSession):
+async def get_all_items(db: AsyncSession) -> List[response_schemas.ItemWithUserResponse]:
     """
     Retrieve all items from the system with user information.
     Includes user details for each item.

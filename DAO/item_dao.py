@@ -1,6 +1,6 @@
 from sqlalchemy import select, update, delete, and_, func, desc
-
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import List, Optional
 
 from database import schema
 from database import models
@@ -15,7 +15,7 @@ class ItemDao:
     async def create_item(cls, 
                           db: AsyncSession, 
                           request: schema.Item, 
-                          user_id: int):
+                          user_id: int) -> models.Item:
         """
         Create new item in database.
         
@@ -40,7 +40,7 @@ class ItemDao:
     async def delete_item(cls,
                           item_id: int,
                           user_id: int,
-                          db: AsyncSession,):
+                          db: AsyncSession) -> None:
 
         """
         Delete item with ownership verification.
@@ -64,7 +64,7 @@ class ItemDao:
     @classmethod
     async def get_item_name(cls, 
                             db: AsyncSession, 
-                            item_name: str):
+                            item_name: str) -> Optional[models.Item]:
         """
         Find item by name.
         
@@ -80,7 +80,7 @@ class ItemDao:
     @classmethod
     async def get_items_by_user_id(cls, 
                                    db: AsyncSession, 
-                                   user_id: int):
+                                   user_id: int) -> List[models.Item]:
         """
         Get all items belonging to specific user.
         
@@ -95,7 +95,7 @@ class ItemDao:
     @classmethod
     async def get_item_by_user_id(cls, db: AsyncSession,
                                   item_id: int,
-                                  user_id: int):
+                                  user_id: int) -> Optional[models.Item]:
         """
         Get specific item with ownership verification.
         
@@ -117,7 +117,7 @@ class ItemDao:
     async def get_item_by_user_id_and_item_name(cls, 
                                             db: AsyncSession,
                                             user_id: int,
-                                            item_name: str):
+                                            item_name: str) -> Optional[models.Item]:
         """
         Find item by name for specific user.
         Used to prevent duplicate item names per user.

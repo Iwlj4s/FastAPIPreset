@@ -1,6 +1,6 @@
 from fastapi import Depends
-
 from sqlalchemy.ext.asyncio import AsyncSession
+from typing import Dict, Any, List
 
 from starlette import status
 from starlette.responses import Response
@@ -27,14 +27,13 @@ Handles user authentication, registration, and user-related operations.
 
 
 async def sign_up(request: schema.User,
-                  db: AsyncSession):
+                  db: AsyncSession) -> Dict[str, Any]:
     
     """
     Register a new user in the system.
     Validates email and username uniqueness.
     
     :param request: User registration data
-    :param response: HTTP response object
     :param db: Database session
 
     :return: Success response with user data or error
@@ -60,7 +59,9 @@ async def sign_up(request: schema.User,
     print(f"   Hashed password: {hash_password}")
     print(f"   Hashed password length: {len(hash_password)}")
 
-    new_user = models.User(name=request.name, email=request.email, password=hash_password)
+    new_user = models.User(name=request.name, 
+                           email=request.email, 
+                           password=hash_password)
     db.add(new_user)
 
     await db.commit()
@@ -81,7 +82,7 @@ async def sign_up(request: schema.User,
 
 async def login(request: schema.UserSignIn,
                 response: Response,
-                db: AsyncSession):
+                db: AsyncSession) -> Dict[str, Any]:
     
     """
     Authenticate user and generate access token.
@@ -112,7 +113,7 @@ async def login(request: schema.UserSignIn,
 
 
 async def get_current_user(db: AsyncSession = Depends(get_db),
-                           token: str = Depends(get_token)):
+                           token: str = Depends(get_token)) -> models.User:
     """
     Get current authenticated user from JWT token.
     Used as dependency in protected routes.
@@ -136,7 +137,7 @@ async def get_current_user(db: AsyncSession = Depends(get_db),
 
 
 async def get_current_user_items(current_user: schema.User, 
-                                 db: AsyncSession = Depends(get_db)):
+                                 db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
     """
     Get all items belonging to the current authenticated user.
     
@@ -169,11 +170,10 @@ async def get_current_user_items(current_user: schema.User,
 
 async def get_current_user_item(item_id: int,
                                 current_user: schema.User,
-                                db: AsyncSession = Depends(get_db)):
+                                db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
     """
     Get specific item belonging to the current user.
     
-    :param response: HTTP response object
     :param item_id: ID of item to retrieve
     :param current_user: Authenticated user
     :param db: Database session
@@ -201,7 +201,7 @@ async def get_current_user_item(item_id: int,
     }
 
 
-async def get_all_users(db: AsyncSession):
+async def get_all_users(db: AsyncSession) -> List[response_schemas.UserWithItemsResponse]:
     """
     Retrieve all users from the system with their items.
     

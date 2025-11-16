@@ -1,7 +1,6 @@
 from starlette.responses import Response
-
 from sqlalchemy.ext.asyncio import AsyncSession
-from starlette import status
+from typing import Dict, Any
 
 from DAO.user_dao import UserDAO
 from database import schema
@@ -18,7 +17,7 @@ Handles login process and token generation.
 
 async def take_access_token_for_user(db: AsyncSession, 
                                      response: Response, 
-                                     request: schema.UserSignIn):
+                                     request: schema.UserSignIn) -> Dict[str, Any]:
     """
     Authenticate user and generate access token.
     

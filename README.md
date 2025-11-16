@@ -63,39 +63,41 @@ All configurations are clearly documented and easy to modify for your specific n
 
 ```
 FastAPIPreset/
-├── .venv/                       # Python virtual environment
-├── DAO/                         # Data Access Object layer
-│   ├── general_dao.py          # Common database operations
-│   ├── item_dao.py             # Item-specific database operations
-│   └── user_dao.py             # User-specific database operations
-├── database/                    # Database configuration and models
-│   ├── database.py             # Database engine and session setup
-│   ├── models.py               # SQLAlchemy data models
-│   ├── response_schemas.py     # Pydantic schemas for API responses
-│   └── schema.py               # Pydantic schemas for validation
-├── helpers/                     # Utility functions and helpers
-│   ├── general_helper.py       # HTTP error handling utilities
-│   ├── jwt_helper.py           # JWT token creation
-│   ├── password_helper.py      # Password hashing and verification
-│   ├── token_helper.py         # Token extraction and validation
-│   └── user_helper.py          # User authentication logic
-├── repository/                  # Business logic layer
-│   ├── item_repository.py      # Item business logic
-│   └── user_repository.py      # User business logic
-├── routes/                      # API route definitions
-│   ├── item_router.py          # Item-related endpoints
-│   └── user_router.py          # User-related endpoints
-├── migrations/                  # Alembic database migrations
-│   ├── versions/               # Migration scripts
-│   ├── env.py                  # Alembic environment configuration
-│   └── script.py.mako          # Migration template
-├── .env                         # Environment variables
-├── alembic.ini                  # Alembic configuration
-├── config.py                    # Application settings
-├── main.py                      # FastAPI application entry point
-├── requirements.txt             # Python dependencies
-├── test_postgres.py             # PostgreSQL connection tester
-└── README.md                    # This file
+├── .venv/                      # Python virtual environment
+├── context/                    # Context dataclasses
+│   ├── request_context.py       # Request context
+├── DAO/                        # Data Access Object layer
+│   ├── general_dao.py           # Common database operations
+│   ├── item_dao.py              # Item-specific database operations
+│   └── user_dao.py              # User-specific database operations
+├── database/                   # Database configuration and models
+│   ├── database.py              # Database engine and session setup
+│   ├── models.py                # SQLAlchemy data models
+│   ├── response_schemas.py      # Pydantic schemas for API responses
+│   └── schema.py                # Pydantic schemas for validation
+├── helpers/                    # Utility functions and helpers
+│   ├── general_helper.py        # HTTP error handling utilities
+│   ├── jwt_helper.py            # JWT token creation
+│   ├── password_helper.py       # Password hashing and verification
+│   ├── token_helper.py          # Token extraction and validation
+│   └── user_helper.py           # User authentication logic
+├── repository/                 # Business logic layer
+│   ├── item_repository.py       # Item business logic
+│   └── user_repository.py       # User business logic
+├── routes/                     # API route definitions
+│   ├── item_router.py           # Item-related endpoints
+│   └── user_router.py           # User-related endpoints
+├── migrations/                 # Alembic database migrations
+│   ├── versions/                # Migration scripts
+│   ├── env.py                   # Alembic environment configuration
+│   └── script.py.mako           # Migration template
+├── .env                        # Environment variables
+├── alembic.ini                 # Alembic configuration
+├── config.py                   # Application settings
+├── main.py                     # FastAPI application entry point
+├── requirements.txt            # Python dependencies
+├── test_postgres.py            # PostgreSQL connection tester
+└── README.md                   # This file
 ```
 
 ---
@@ -317,6 +319,154 @@ async def new_feature(
         db=db
     )
 ```
+
+---
+
+## 🔄Request Context Pattern
+### What is Request Context?
+
+Request Context is a pattern that provides a convenient way to pass common dependencies (database, current user, logger, etc.) between application layers.
+
+### Two Approaches to Dependencies
+### Approach 1: Request Context (Recommended)
+
+#### Using context:
+
+```python
+from context.request_context import RequestContext, get_request_context
+
+@user_router.get("/me/items")
+async def get_current_user_items(context: RequestContext = Depends(get_request_context)):
+    """
+    - **context**: Request Context contains:
+        - **db**: Database session
+        - **current_user**: Authenticated user
+    """
+    return await user_repository.get_current_user_items(current_user=context.current_user, 
+                                                        db=context.db)
+```
+
+Advantages:
+- Clean function signatures
+- Easy to add new dependencies
+- Centralized management
+- Simplifies testing
+
+### Approach 2: Standard FastAPI Dependencies
+
+#### Without context:
+
+```python
+@user_router.get("/me/items")
+async def get_current_user_items(current_user: schema.User = Depends(get_current_user),
+                                 db: AsyncSession = Depends(get_db)):
+    """
+    - **current_user**: Authenticated user
+    - **db**: Database session
+    """
+    return await user_repository.get_current_user_items(current_user=current_user, 
+                                                        db=db)
+```
+
+When to use:
+-   Simple endpoints with 1-2 dependencies
+-   When you need explicit control over dependencies
+-   Better clarity for beginners
+
+
+#### How to Add New Dependencies to Context
+
+1. Add field to RequestContext:
+
+```python
+    @dataclass
+    class RequestContext:
+        db: AsyncSession
+        current_user: "schema.User"
+        logger: logging.Logger  # New dependency
+        cache: RedisClient     # New dependency
+
+    Update context factory:
+
+    async def get_request_context(db: AsyncSession = Depends(get_db),
+                                  current_user: "schema.User" = Depends(get_current_user),
+                                  logger: logging.Logger = Depends(get_logger),      # New 
+                                  cache: RedisClient = Depends(get_redis_client)     # New 
+                                  ) -> RequestContext:
+        return RequestContext(db=db, 
+                              current_user=current_user, 
+                              logger=logger,     # New 
+                              cache=cache        # New 
+                              )
+```
+#### Now all endpoints automatically get access!
+
+
+### Migration Between Approaches
+
+### From context to standard dependencies:
+
+#### BEFORE (with context)
+```python
+async def some_endpoint(context: RequestContext = Depends(get_request_context)):
+    user = context.current_user
+    db = context.db
+```
+
+#### AFTER (without context)  
+```python
+async def some_endpoint(current_user: schema.User = Depends(get_current_user),
+                        db: AsyncSession = Depends(get_db)):
+    user = current_user
+    db = db
+```
+
+### Usage Examples
+#### With Context (recommended for complex projects):
+
+```python
+@user_router.get("/me/items")
+async def get_current_user_items(context: RequestContext = Depends(get_request_context)):
+    """
+    Using Request Context - clean signature,
+    easy to add new dependencies.
+    """
+    return await user_repository.get_current_user_items(current_user=context.current_user, 
+                                                        db=context.db)
+```
+
+#### Without Context (simpler for beginners):
+
+```python
+@user_router.get("/me/items")  
+async def get_current_user_items(
+    current_user: schema.User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Standard FastAPI approach - explicit dependencies,
+    better for understanding data flow.
+    """
+    return await user_repository.get_current_user_items(
+        current_user=current_user, 
+        db=db
+    )
+```
+
+#### Advantages of Each Approach
+
+Request Context
+- Scalability - easy to add services
+- Code cleanliness - short function signatures
+- Consistency - unified interface for all dependencies
+- Testability - one mock for all dependencies
+
+Standard Dependencies 
+- Clarity - explicitly see which dependencies are used
+- Flexibility - different dependencies for different endpoints
+- Simplicity - fewer abstractions to learn
+- Standard - follows FastAPI documentation
+
 
 ---
 

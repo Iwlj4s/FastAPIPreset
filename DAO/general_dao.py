@@ -1,7 +1,7 @@
 from sqlalchemy import select
-
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from typing import List, Optional, Any
 
 class GeneralDAO:
     """
@@ -11,7 +11,7 @@ class GeneralDAO:
     @classmethod
     async def get_all_items(cls, 
                             db: AsyncSession, 
-                            item):
+                            item) -> List[Any]:
         """
         Retrieve all items of specified model from database.
         
@@ -26,8 +26,9 @@ class GeneralDAO:
 
     @classmethod
     async def get_item_by_id(cls, 
-                             db: AsyncSession, item, 
-                             item_id: int):
+                             item, 
+                             item_id: int,
+                             db: AsyncSession) -> Optional[Any]:
         """
         Retrieve single item by it's ID.
         

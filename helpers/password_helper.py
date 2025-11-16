@@ -5,7 +5,7 @@ Password hashing and verification utilities.
 Uses bcrypt for secure password handling.
 """
 
-def hash_password(plain_password: str):
+def hash_password(plain_password: str) -> str:
     """
     Hash plain text password using bcrypt.
     

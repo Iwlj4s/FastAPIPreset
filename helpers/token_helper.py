@@ -12,7 +12,7 @@ Handles token verification and user identification.
 """
 
 
-def get_token(request: Request, response: Response):
+def get_token(request: Request, response: Response) -> str:
     """
     Extract JWT token from request cookies or Authorization header.
     
@@ -32,7 +32,7 @@ def get_token(request: Request, response: Response):
     return token
 
 
-def verify_token(token: str):
+def verify_token(token: str) -> str:
     """
     Verify JWT token validity and extract user ID.
     
