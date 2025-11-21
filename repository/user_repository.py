@@ -155,6 +155,7 @@ async def get_current_user_items(current_user: schema.User,
         response_schemas.ItemResponse(
             id=item.id,
             name=item.name,
+            description=item.description,
             user_id=item.user_id
         )
         for item in items
@@ -191,6 +192,7 @@ async def get_current_user_item(item_id: int,
     item_data = response_schemas.ItemResponse(
         id=item.id,
         name=item.name,
+        description=item.description,
         user_id=item.user_id
     )
 
@@ -224,6 +226,7 @@ async def get_all_users(db: AsyncSession) -> List[response_schemas.UserWithItems
                 response_schemas.ItemResponse(
                     id=item.id,
                     name=item.name,
+                    description=item.description,
                     user_id=item.user_id
                 )
                 for item in user.item

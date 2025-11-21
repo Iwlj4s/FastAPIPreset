@@ -85,6 +85,7 @@ class UserDAO:
                 response_schemas.ItemResponse(
                     id=item.id,
                     name=item.name,
+                    description=item.description,
                     user_id=item.user_id
                 )
                 for item in user.item

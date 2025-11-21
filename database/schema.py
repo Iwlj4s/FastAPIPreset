@@ -1,6 +1,6 @@
 from pydantic import BaseModel, Field
 
-from typing import Union
+from typing import Union, Optional
 
 """
 Pydantic schemas for data validation and serialization.
@@ -10,7 +10,12 @@ Used for request/response data modeling.
 class Item(BaseModel):
     """Schema for item creation and validation"""
     name: Union[str, None] = Field(default=None, min_length=3, title="Item name")
+    description: Optional[str] = Field(default=None, min_length=3, title="Item description")
 
+class ItemUpdate(BaseModel):
+    """Schema for update item """
+    name: Optional[str] = None
+    description: Optional[str] = None
 
 class User(BaseModel):
     """Schema for user registration and validation"""

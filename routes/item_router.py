@@ -68,8 +68,27 @@ async def add_item(request: schema.Item,
                                              current_user=request_context.current_user, 
                                              db=request_context.db)
 
+@item_router.patch("/update_item/{item_id}", status_code=200)
+async def get_me(item_id: int,
+                 item_data: schema.ItemUpdate,
+                 request_context: RequestContext = Depends(get_request_context)):
+    """
+    Update item current user's using PATCH method.
+    Requires valid JWT token.
 
-@item_router.post("/delete_item/{item_id}")
+    - **request_context**: Request Context which use basic stuff:
+        - **current_user**: Automatically injected authenticated user
+        - **db**: Database session dependency
+        
+    Returns updated item's data.
+    """
+
+    return await item_repository.update_item(item_id=item_id,
+                                             user_id=request_context.current_user.id,
+                                             item_data=item_data,
+                                             db=request_context.db)
+
+@item_router.delete("/delete_item/{item_id}")
 async def delete_item(item_id: int,
                       request_context: RequestContext = Depends(get_request_context)) -> Dict[str, Any]:
     """

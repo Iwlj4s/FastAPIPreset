@@ -4,6 +4,7 @@ from typing import List, Optional
 
 from database import schema
 from database import models
+from helpers import general_helper
 
 
 class ItemDao:
@@ -24,8 +25,11 @@ class ItemDao:
         :param user_id: ID of user creating the item
         :return: Created item object
         """
+
+        item_desc = request.description or "No description"
         new_item = models.Item(
             name=request.name,
+            description=item_desc,
             user_id=user_id
         )
 
@@ -35,6 +39,27 @@ class ItemDao:
         await db.commit()
 
         return new_item
+    
+    @classmethod
+    async def update_item(cls,
+                          item_id: int,
+                          user_id: int,
+                          item_data: schema.ItemUpdate,
+                          db: AsyncSession) -> models.Item:
+        
+        item = await cls.get_item_by_user_id(db=db, 
+                                            item_id=item_id, 
+                                            user_id=user_id)
+        await general_helper.CheckHTTP404NotFound(founding_item=item, 
+                                              text="Item not found or you don't have permission to update it")
+        update_data = item_data.dict(exclude_unset=True)
+        for k, v in update_data.items():
+            setattr(item, k, v)
+
+        await db.commit()
+        await db.refresh(item)
+
+        return item
     
     @classmethod
     async def delete_item(cls,

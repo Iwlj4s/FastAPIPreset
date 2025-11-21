@@ -34,6 +34,9 @@ class Item(Base):
     __tablename__ = 'item'
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     name: Mapped[str] = mapped_column(String, nullable=False)    # Item name (not unique)
+    description: Mapped[str] = mapped_column(String, 
+                                             nullable=False, 
+                                             server_default="No description") # Item description 
     user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))    # Foreign key to user
 
     # Many-to-one relationship with User model

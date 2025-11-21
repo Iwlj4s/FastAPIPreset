@@ -1,4 +1,4 @@
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any, List
 
@@ -52,9 +52,35 @@ async def create_item(request: schema.Item,
         "data": {
             "id": new_item.id,
             "name": new_item.name,
+            "description": new_item.description,
             "user_id": new_item.user_id
         }
     }
+
+async def update_item(item_id: int,
+                      user_id: int,
+                      item_data: schema.ItemUpdate,
+                      db: AsyncSession) -> response_schemas.ItemResponse:
+    if not item_data.dict(exclude_unset=True):
+        raise HTTPException(status_code=400, detail="No fields to update")
+    
+    updated_item = await ItemDao.update_item(item_id=item_id, 
+                                             user_id=user_id,
+                                             item_data=item_data,
+                                             db=db)
+    
+    return {
+        "message": "'Item' has been updated",
+        "status_code": 200,
+        "data": {
+            "id": updated_item.id,
+            "name": updated_item.name,
+            "description": updated_item.description,
+            "user_id": updated_item.user_id
+        }
+    }
+
+
 
 async def delete_item(item_id: int,
                       user_id: int,
@@ -106,6 +132,7 @@ async def show_item(item_id: int,
     item_data = response_schemas.ItemWithUserResponse(
         id=item.id,
         name=item.name,
+        description=item.description,
         user_id=item.user.id,
         user_name=item.user.name,
         user_email=item.user.email
@@ -135,6 +162,7 @@ async def get_all_items(db: AsyncSession) -> List[response_schemas.ItemWithUserR
         item_data = response_schemas.ItemWithUserResponse(
             id=item.id,
             name=item.name,
+            description=item.description,
             user_id=item.user.id,
             user_name=item.user.name,
             user_email=item.user.email

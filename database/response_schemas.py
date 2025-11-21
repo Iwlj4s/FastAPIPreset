@@ -10,6 +10,7 @@ class ItemResponse(BaseModel):
     """Schema for item responses without user recursion"""
     id: int
     name: str
+    description: str
     user_id: int
     
     class Config:
@@ -41,6 +42,7 @@ class ItemWithUserResponse(BaseModel):
     """Schema for item with user info (flattened structure)"""
     id: int
     name: str
+    description: str
     user_id: int
     user_name: str
     user_email: str
