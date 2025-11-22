@@ -131,7 +131,9 @@ async def get_current_user(db: AsyncSession = Depends(get_db),
             'message': "Token not found",
             'status_code': 401,
         }
-    user = await GeneralDAO.get_item_by_id(db=db, item=models.User, item_id=int(user_id))
+    user = await GeneralDAO.get_record_by_id(record_id=user_id,
+                                             model=models.User, 
+                                             db=db)
 
     return user
 
@@ -211,7 +213,7 @@ async def get_all_users(db: AsyncSession) -> List[response_schemas.UserWithItems
     :return: List of all users with their items
     :raises HTTPException: 404 if no users found
     """
-    users = await GeneralDAO.get_all_items(db=db, item=models.User)
+    users = await GeneralDAO.get_all_records(db=db, model=models.User)
     await general_helper.CheckHTTP404NotFound(founding_item=users, text="Users not found")
     
     # Format response with user items

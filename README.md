@@ -28,6 +28,15 @@ All configurations are clearly documented and easy to modify for your specific n
 
 ## ✨ Features
 
+- **Clean Architecture**
+   - Repository pattern for business logic
+
+   - DAO (Data Access Object) layer for database operations
+
+   - Request Context for dependency management
+
+   - Structured response schemas
+
 - **User Authentication**
   - User registration with email and username validation
   - JWT-based login with secure password hashing
@@ -276,49 +285,10 @@ ALGORITHM=HS256
 
 ### Item Management
 - `POST /items/API/create_item` - Create new item (authenticated)
+- `PATCH /items/API/update_item{item_id}` - Update item (authenticated)
 - `POST /items/API/delete_item/{item_id}` - Delete item (owner only)
 - `GET /items/API/get_item/{item_id}` - Get item by ID (public)
 - `GET /items/API/items` - Get all items (public)
-
----
-
-## 🛠️ Development
-
-### Architecture Overview
-
-This preset follows a clean architecture pattern:
-
-1. **Routes Layer** (`/routes/`) - HTTP endpoint definitions
-2. **Repository Layer** (`/repository/`) - Business logic and validation
-3. **DAO Layer** (`/DAO/`) - Data access operations
-4. **Models Layer** (`/database/models.py`) - Data models
-5. **Helpers** (`/helpers/`) - Utility functions
-
-### Adding New Features
-
-1. **Create a new model** in `database/models.py`
-2. **Add Pydantic schemas** in `database/schema.py`
-3. **Create DAO methods** in appropriate DAO file
-4. **Implement business logic** in repository layer
-5. **Define API routes** in router files
-6. **Create database migration** with Alembic
-
-### Example: Adding a New Endpoint
-
-```python
-# In appropriate router file
-@router.post("/new_endpoint")
-async def new_feature(
-    request: schema.NewSchema,
-    current_user: schema.User = Depends(get_current_user),
-    db: AsyncSession = Depends(get_db)
-):
-    return await repository.new_feature_logic(
-        request=request,
-        current_user=current_user,
-        db=db
-    )
-```
 
 ---
 
@@ -354,7 +324,7 @@ Advantages:
 
 ### Approach 2: Standard FastAPI Dependencies
 
-#### Without context:
+### Without context:
 
 ```python
 @user_router.get("/me/items")
@@ -374,9 +344,9 @@ When to use:
 -   Better clarity for beginners
 
 
-#### How to Add New Dependencies to Context
+### How to Add New Dependencies to Context
 
-1. Add field to RequestContext:
+1. Add field to RequestContext (`/context/request_context.py`):
 
 ```python
     @dataclass
@@ -399,21 +369,20 @@ When to use:
                               cache=cache        # New 
                               )
 ```
-#### Now all endpoints automatically get access!
-
+ Now all endpoints automatically get access!
 
 ### Migration Between Approaches
 
 ### From context to standard dependencies:
 
-#### BEFORE (with context)
+**BEFORE (with context)**
 ```python
 async def some_endpoint(context: RequestContext = Depends(get_request_context)):
     user = context.current_user
     db = context.db
 ```
 
-#### AFTER (without context)  
+**AFTER (without context)**
 ```python
 async def some_endpoint(current_user: schema.User = Depends(get_current_user),
                         db: AsyncSession = Depends(get_db)):
@@ -422,7 +391,7 @@ async def some_endpoint(current_user: schema.User = Depends(get_current_user),
 ```
 
 ### Usage Examples
-#### With Context (recommended for complex projects):
+### With Context (recommended for complex projects):
 
 ```python
 @user_router.get("/me/items")
@@ -435,7 +404,7 @@ async def get_current_user_items(context: RequestContext = Depends(get_request_c
                                                         db=context.db)
 ```
 
-#### Without Context (simpler for beginners):
+### Without Context (simpler for beginners):
 
 ```python
 @user_router.get("/me/items")  
@@ -453,7 +422,7 @@ async def get_current_user_items(
     )
 ```
 
-#### Advantages of Each Approach
+### Advantages of Each Approach
 
 Request Context
 - Scalability - easy to add services
@@ -467,6 +436,204 @@ Standard Dependencies
 - Simplicity - fewer abstractions to learn
 - Standard - follows FastAPI documentation
 
+
+---
+
+## 🛠️ Development
+
+### Architecture Overview
+
+This preset follows a clean architecture pattern:
+
+1. **Routes Layer** (`/routes/`) 
+   - HTTP endpoint definitions
+
+   - Request validation with Pydantic schemas
+
+   - Dependency injection
+
+   - Response formatting
+
+2. **Repository Layer** (`/repository/`)
+   - Business logic and validation
+
+   - Error handling
+
+   - Data transformation between layers
+
+   - Coordinates between routes and DAO
+
+3. **DAO Layer** (`/DAO/`)
+   - Data access operations
+
+   - Database queries and transactions
+
+   - Model-specific operations
+
+   - Generic operations for any model
+
+4. **Models & Schemas** (`/database/`)
+   - SQLAlchemy data models
+
+   - Pydantic schemas for request validation
+
+   - Response schemas for API responses
+
+   - Database configuration
+
+
+5. **Helpers** (`/helpers/`)
+   - Utility functions
+
+   - JWT token management
+
+   - Password hashing
+
+   - Error handling utilities
+
+### Adding New Features
+
+1. **Create a new model** in `database/models.py`
+
+```python
+# In database/models.py
+class NewModel(Base):
+    """
+    New model description.
+    Explain the purpose and relationships of this model.
+    """
+    __tablename__ = 'new_model'
+    
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[str] = mapped_column(
+        String, 
+        nullable=False, 
+        server_default="No description"
+    )
+    user_id: Mapped[int] = mapped_column(ForeignKey('users.id'))
+
+    # Many-to-one relationship with User model
+    user: Mapped["User"] = relationship(
+        "User",
+        back_populates="new_model",  # Make sure to add this back_populates to User model
+        lazy="selectin"
+    )
+```
+Don't forget to update the User model to include the back relationship:
+```python
+# In User class, add:
+new_model: Mapped[List["NewModel"]] = relationship(
+    "NewModel",
+    back_populates="user",
+    lazy="selectin"
+)
+```
+
+2. **Add Pydantic schemas** in `database/schema.py`
+
+```python
+# In database/schema.py
+class NewModelCreate(BaseModel):
+    name: str = Field(..., min_length=3)
+    description: Optional[str] = None
+
+class NewModelUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+```
+
+3. **Create Response Schemas**
+```python
+# In database/response_schemas.py
+class NewModelResponse(BaseModel):
+    id: int
+    name: str
+    description: str
+    user_id: int
+    
+    class Config:
+        from_attributes = True
+
+class NewModelCreateResponse(BaseResponse):
+    data: NewModelResponse
+```
+
+4. **Implement DAO Methods**
+```python
+# In DAO/new_model_dao.py
+class NewModelDAO:
+    @classmethod
+    async def create_new_model(cls, db: AsyncSession, request: schema.NewModelCreate, user_id: int):
+        new_model = models.NewModel(
+            name=request.name,
+            description=request.description,
+            user_id=user_id
+        )
+        db.add(new_model)
+        await db.commit()
+        await db.refresh(new_model)
+        return new_model
+```
+
+5. **Add Repository Logic**
+```python
+# In repository/new_model_repository.py
+async def create_new_model(
+    request: schema.NewModelCreate,
+    current_user: schema.User,
+    db: AsyncSession
+) -> response_schemas.NewModelCreateResponse:
+    # Business logic and validation
+    new_model = await NewModelDAO.create_new_model(
+        db=db,
+        request=request,
+        user_id=current_user.id
+    )
+    
+    return response_schemas.NewModelCreateResponse(
+        message="New model created successfully",
+        status_code=200,
+        data=response_schemas.NewModelResponse(
+            id=new_model.id,
+            name=new_model.name,
+            description=new_model.description,
+            user_id=new_model.user_id
+        )
+    )
+```
+
+6. **Define API Routes**
+```python
+# In routes/new_model_router.py
+@router.post("/create_new_model")
+async def create_new_model_endpoint(
+    request: schema.NewModelCreate,
+    context: RequestContext = Depends(get_request_context)
+) -> response_schemas.NewModelCreateResponse:
+    return await new_model_repository.create_new_model(
+        request=request,
+        current_user=context.current_user,
+        db=context.db
+    )
+```
+
+### Example: Adding a New Endpoint
+
+```python
+# In appropriate router file
+@router.post("/new_endpoint")
+async def new_feature(
+    request: schema.NewSchema,
+    current_user: schema.User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    return await repository.new_feature_logic(
+        request=request,
+        current_user=current_user,
+        db=db
+    )
+```
 
 ---
 

@@ -13,25 +13,44 @@ from DAO.item_dao import ItemDao
 from database.database import get_db
 
 """
-Item business logic layer.
-Handles item-related operations and coordinates between routes and DAO.
+ITEM BUSINESS LOGIC LAYER
+
+This module handles item-related business operations and coordinates 
+between API routes and data access layer.
+
+ARCHITECTURE:
+-------------
+API Routes → Item Repository → DAO (Data Access Objects) → Database
+
+Each function here:
+1. Validates business rules
+2. Handles errors  
+3. Transforms data between layers
+4. Returns standardized responses
 """
 
 async def create_item(request: schema.Item,
                       current_user: schema.User,
-                      db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
+                      db: AsyncSession = Depends(get_db)) -> response_schemas.ItemCreateResponse:
     
     """
     Create a new item for the current user.
     Validates item name uniqueness for the user before creation.
     
-    :param request: Item creation data from schema
-    :param response: HTTP response object
-    :param current_user: Authenticated user creating the item
-    :param db: Database session
+    :param request: schema.Item
+                    Item creation data with name and optional description
 
-    :return: Success response with created item data
-    :raises HTTPException: 409 if item name already exists for user
+    :param current_user:    schema.User  
+                            Authenticated user creating the item
+
+    :param db:  AsyncSession
+                Database session for operations
+
+    :return:    ItemCreateResponse
+                Standardized response with created item data
+
+    :raises:    HTTPException 409
+                If user already has item with same name
     """
     # Check if user already has an item with the same name
     user_item = await ItemDao.get_item_by_user_id_and_item_name(db=db, 
@@ -46,54 +65,101 @@ async def create_item(request: schema.Item,
                                          user_id=current_user.id)
     await db.refresh(new_item)
 
-    return {
-        "message": "'Item' has been added",
-        "status_code": 200,
-        "data": {
-            "id": new_item.id,
-            "name": new_item.name,
-            "description": new_item.description,
-            "user_id": new_item.user_id
-        }
-    }
+    return response_schemas.ItemCreateResponse(
+        message="Item has been created successfully",
+        status_code=200,
+        data=response_schemas.ItemResponse(
+            id=new_item.id,
+            name=new_item.name,
+            description=new_item.description,
+            user_id=new_item.user_id
+        )
+    )
 
 async def update_item(item_id: int,
                       user_id: int,
                       item_data: schema.ItemUpdate,
-                      db: AsyncSession) -> response_schemas.ItemResponse:
+                      db: AsyncSession) -> response_schemas.ItemUpdateResponse:
+    
+    """
+    Update item with comprehensive validation and ownership check.
+    Supports partial updates - only provided fields will be updated.
+    
+    :param item_id: int
+                    ID of the item to update
+
+    :param user_id: int  
+                    ID of user attempting update (for ownership verification)
+    
+    :param item_data:   schema.ItemUpdate
+                        Update data with optional name and/or description
+
+    :param db:  AsyncSession
+                Database session for operations
+
+    :return:    ItemUpdateResponse
+                Standardized response with created item data
+
+    :raises:    HTTPException 400
+                If no fields provided for update
+
+                HTTPException 404  
+                If item not found or user doesn't own it
+
+                HTTPException 409
+                If new name conflicts with existing item
+    """
+
     if not item_data.dict(exclude_unset=True):
         raise HTTPException(status_code=400, detail="No fields to update")
     
-    updated_item = await ItemDao.update_item(item_id=item_id, 
-                                             user_id=user_id,
-                                             item_data=item_data,
-                                             db=db)
+    item = await ItemDao.get_item_by_user_id(db=db, 
+                                            item_id=item_id, 
+                                            user_id=user_id)
     
-    return {
-        "message": "'Item' has been updated",
-        "status_code": 200,
-        "data": {
-            "id": updated_item.id,
-            "name": updated_item.name,
-            "description": updated_item.description,
-            "user_id": updated_item.user_id
-        }
-    }
+    await general_helper.CheckHTTP404NotFound(founding_item=item, 
+                                              text="Item not found or you don't have permission to update it")
+    
+    updated_item = await GeneralDAO.update_record(record=item,
+                                                  update_data=item_data,
+                                                  db=db)
+    
+    # TODO: Add check for 'name' or other stuff duplicate
+    
+    return response_schemas.ItemUpdateResponse(
+        message="Item has been updated",
+        status_code=200,
+        data = response_schemas.ItemResponse(
+            id=updated_item.id,
+            name=updated_item.name,
+            description=updated_item.description,
+            user_id=updated_item.user_id
+        )
+    )
 
 
 
 async def delete_item(item_id: int,
                       user_id: int,
-                      db: AsyncSession) -> Dict[str, Any]:
+                      db: AsyncSession) -> response_schemas.ItemDeleteResponse:
     """
     Delete an item with ownership verification.
     Only the item owner can delete their items.
     
-    :param item_id: ID of item to delete
-    :param user_id: ID of user attempting deletion
-    :param db: Database session
-    :return: Success response
-    :raises HTTPException: 404 if item not found or user doesn't own it
+    :param item_id: int
+                    ID of the item to delete
+
+    :param user_id: int
+                    ID of user attempting deletion
+
+    :param db:  AsyncSession
+                Database session for operations
+
+    :return:    ItemDeleteResponse
+                Standardized success response
+
+    :raises:    HTTPException 404
+                If item not found or user doesn't own it
     """
     # Verify item exists and user owns it
     item = await ItemDao.get_item_by_user_id(db=db, 
@@ -105,27 +171,33 @@ async def delete_item(item_id: int,
     # Delete the item
     await ItemDao.delete_item(db=db, item_id=item_id, user_id=user_id)
 
-    return {
-        "message": "Item deleted successfully",
-        "status_code": 200
-    }
+    return response_schemas.ItemDeleteResponse(
+        message="Item has been deleted",
+        status_code=200
+    )
 
 
 async def show_item(item_id: int,
-                    db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
+                    db: AsyncSession = Depends(get_db)) -> response_schemas.ItemDetailResponse:
     """
-    Retrieve a specific item by ID.
-    No ownership check - any authenticated user can view any item.
+    Retrieve a specific item by ID with user information.
+    No ownership check - any user can view any item.
     
-    :param item_id: ID of item to retrieve
-    :param response: HTTP response object
-    :param db: Database session
-    :return: Item data
-    :raises HTTPException: 404 if item not found
+    :param item_id: int
+                    ID of the item to delete
+
+    :param db:  AsyncSession
+                Database session for operations
+
+    :return:    ItemDetailResponse
+                Standardized success response
+
+    :raises:    HTTPException 404
+                If item not found
     """
-    item = await GeneralDAO.get_item_by_id(db=db, 
-                                           item=models.Item, 
-                                           item_id=int(item_id))
+    item = await GeneralDAO.get_record_by_id(record_id=item_id,
+                                             model=models.Item,
+                                             db=db)
     await general_helper.CheckHTTP404NotFound(founding_item=item, text="Item not found")
     
     # Use Response Schema
@@ -138,21 +210,27 @@ async def show_item(item_id: int,
         user_email=item.user.email
     )
     
-    return {
-        "message": "Successful",
-        "data": item_data
-    }
+    return response_schemas.ItemDetailResponse(
+        message="Item retrieved successfully",
+        status_code=200,
+        data=item_data
+    )
 
-async def get_all_items(db: AsyncSession) -> List[response_schemas.ItemWithUserResponse]:
+async def get_all_items(db: AsyncSession) -> response_schemas.ItemListResponse:
     """
     Retrieve all items from the system with user information.
     Includes user details for each item.
-    
-    :param db: Database session
-    :return: List of all items with user information
-    :raises HTTPException: 404 if no items found
+
+    :param db:  AsyncSession
+                Database session for operations
+
+    :return:    ItemListResponse
+                Standardized success response
+
+    :raises:    HTTPException 404
+                If items not found
     """
-    items = await GeneralDAO.get_all_items(db=db, item=models.Item)
+    items = await GeneralDAO.get_all_records(db=db, model=models.Item)
     await general_helper.CheckHTTP404NotFound(founding_item=items, text="Items not found")
 
     # Format response with user information
@@ -169,4 +247,8 @@ async def get_all_items(db: AsyncSession) -> List[response_schemas.ItemWithUserR
         )
         items_list.append(item_data)
     
-    return items_list
+    return response_schemas.ItemListResponse(
+        message="Items retrieved successfully",
+        status_code=200,
+        data=items_list
+    )
