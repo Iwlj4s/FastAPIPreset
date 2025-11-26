@@ -306,7 +306,7 @@ Why use these tools?
 
 **Personal Recommendation:** Try Yaak first - it's lightweight, clean interface makes API testing much more enjoyable, especially when learning FastAPI!
 And it's kinda pretty, lol 
-
+<img width="1159" height="649" alt="изображение" src="https://github.com/user-attachments/assets/f9689241-a99c-4c69-ac5f-830cdb8b0f63" />
 
 </details>
 
