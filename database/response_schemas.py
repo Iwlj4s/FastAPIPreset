@@ -1,10 +1,8 @@
 from pydantic import BaseModel
-from typing import List
+from typing import List, Optional, Generic, TypeVar
 
-"""
-Response schemas to avoid recursion in serialization.
-Separate from request schemas to break circular dependencies.
-"""
+# Type variable for generic types - represents any data type
+T = TypeVar('T')
 
 class BaseResponse(BaseModel):
     """
@@ -29,20 +27,81 @@ class BaseResponse(BaseModel):
         from_attributes = True
 
 
+class DataResponse(BaseResponse, Generic[T]):
+    """
+    Generic response schema for single object endpoints.
+    Extends BaseResponse with optional data field of any type.
+    
+    Usage:
+    - Single object retrieval (GET /items/{id})
+    - Create operations (POST /items)
+    - Update operations (PATCH /items/{id})
+    
+    Generic type T determines the data structure:
+    - DataResponse[ItemResponse] for item data
+    - DataResponse[UserResponse] for user data
+    
+    Example Response:
+    -----------------
+    {
+        "message": "Item retrieved successfully",
+        "status_code": 200,
+        "data": {
+            "id": 1,
+            "name": "Laptop",
+            "description": "Gaming laptop",
+            "user_id": 5
+        }
+    }
+    """
+    data: Optional[T] = None
+
+
+class ListResponse(BaseResponse, Generic[T]):
+    """
+    Generic response schema for list/collection endpoints.
+    Extends BaseResponse with data field containing list of objects.
+    
+    Usage:
+    - List operations (GET /items)
+    - Bulk operations returning multiple objects
+    
+    Generic type T determines the structure of list items:
+    - ListResponse[ItemWithUserResponse] for items with user info
+    - ListResponse[UserResponse] for basic user list
+    
+    Example Response:
+    -----------------
+    {
+        "message": "Items retrieved successfully",
+        "status_code": 200,
+        "data": [
+            {
+                "id": 1,
+                "name": "Laptop",
+                "description": "Gaming laptop",
+                "user_id": 5,
+                "user_name": "John Doe",
+                "user_email": "john@example.com"
+            }
+        ]
+    }
+    """
+    data: List[T] = []
+
+
 # Basic enity schemas (without relationships)
 class UserResponse(BaseModel):
     """
-    Schema for user responses without item recursion.
-    Used when you need basic user data without nested items information.
+    Basic user schema without relationships to avoid recursion.
+    Contains essential user information for API responses.
     
-    :param id:  int
-                Unique identifier of the user
-
-    :param name:    str
-                    Full name of the user
-                    
-    :param email:   str
-                    Email address of the user
+    Fields:
+    - id: Unique user identifier
+    - name: User's display name
+    - email: User's email address
+    
+    Use when you need user data without nested item information.
     """
     id: int
     name: str
@@ -54,20 +113,16 @@ class UserResponse(BaseModel):
 
 class ItemResponse(BaseModel):
     """
-    Schema for item responses without user recursion.
-    Used when you need basic item data without nested user information.
+    Basic item schema without relationships to avoid recursion.
+    Contains essential item information for API responses.
     
-    :param id:  int
-                Unique identifier of the item
-
-    :param name:    str
-                    Name of the item
-
-    :param description: str
-                        Description of the item  
-
-    :param user_id: int
-                        ID of the user who owns this item 
+    Fields:
+    - id: Unique item identifier
+    - name: Item name
+    - description: Item description
+    - user_id: ID of the user who owns this item
+    
+    Use when you need item data without nested user information.
     """
     id: int
     name: str
@@ -79,7 +134,7 @@ class ItemResponse(BaseModel):
 
 
 # Composite schemas (with relationships)
-class UserWithItemsResponse(BaseModel):
+class UserWithItemsResponse(UserResponse):
     """
     Schema for user with items (flattened structure).
     Prevents recursion by including items as basic ItemResponse objects.
@@ -96,170 +151,39 @@ class UserWithItemsResponse(BaseModel):
     :param items:   List[ItemResponse]
                     List of user's items without nested user data to avoid recursion
     """
-    id: int
-    name: str
-    email: str
+
     items: List[ItemResponse] = []
-    
-    class Config:
-        from_attributes = True
 
 
-class ItemWithUserResponse(BaseModel):
+class ItemWithUserResponse(ItemResponse):
     """
-    Schema for item with user info (flattened structure).
-    Prevents recursion by including user fields directly instead of nested user object.
+    Extended item schema including owner information.
+    Prevents recursion by flattening user data instead of nested object.
     
-    :param id:          int
-                        Unique identifier of the item
-
-    :param name:        str
-                        Name of the item
-
-    :param description: str
-                        Description of the item
-
-    :param user_id:     int
-                        ID of the user who owns this item
-
-    :param user_name:   str
-                        Name of the user who owns this item  
-                        
-    :param user_email:  str
-                        Email of the user who owns this item
+    Extends ItemResponse with:
+    - user_name: Name of the user who owns this item
+    - user_email: Email of the user who owns this item
+    
+    Use when you need item details with basic owner information.
     """
-    id: int
-    name: str
-    description: str
-    user_id: int
     user_name: str
     user_email: str
-    
-    class Config:
-        from_attributes = True
 
 
-# Item API Response Wrappers
-class ItemCreateResponse(BaseResponse):
-    """
-    Schema for item creation responses.
-    Extends BaseResponse with created item data.
-    
-    Usage:
-    ------
-    - POST /items/create_item endpoint
-    
-    Example Response:
-    -----------------
-    {
-        "message": "Item created successfully",
-        "status_code": 201,
-        "data": {
-            "id": 1,
-            "name": "Laptop",
-            "description": "Super laptop",
-            "user_id": 5
-        }
-    }
-    """
-    data: ItemResponse
+ItemCreateResponse = DataResponse[ItemResponse]
+"""Response type for item creation endpoints"""
 
+ItemUpdateResponse = DataResponse[ItemResponse]
+"""Response type for item update endpoints"""
 
-class ItemUpdateResponse(BaseResponse):
-    """
-    Schema for item update responses.
-    Extends BaseResponse with updated item data.
-    
-    Usage:
-    ------
-    - PATCH /items/update_item/{item_id} endpoint
-    
-    Example Response:
-    -----------------
-    {
-        "message": "Item updated successfully", 
-        "status_code": 200,
-        "data": {
-            "id": 1,
-            "name": "Updated Laptop",
-            "description": "Updated description",
-            "user_id": 5
-        }
-    }
-    """
-    data: ItemResponse
+ItemDeleteResponse = BaseResponse
+"""Response type for item deletion endpoints"""
 
+ItemDetailResponse = DataResponse[ItemWithUserResponse]
+"""Response type for single item retrieval with user info"""
 
-class ItemDeleteResponse(BaseResponse):
-    """
-    Schema for item deletion responses.
-    Extends BaseResponse without additional data.
-    
-    Usage:
-    ------
-    - DELETE /items/delete_item/{item_id} endpoint
-    
-    Example Response:
-    -----------------
-    {
-        "message": "Item deleted successfully",
-        "status_code": 200
-    }
-    """
-    pass
+ItemListResponse = ListResponse[ItemWithUserResponse]
+"""Response type for item list retrieval with user info"""
 
-
-class ItemListResponse(BaseResponse):
-    """
-    Schema for item list responses.
-    Extends BaseResponse with list of items including user information.
-    
-    Usage:
-    ------
-    - GET /items/ endpoint
-    
-    Example Response:
-    -----------------
-    {
-        "message": "Items retrieved successfully",
-        "status_code": 200,
-        "data": [
-            {
-                "id": 1,
-                "name": "Laptop",
-                "description": "Gaming laptop", 
-                "user_id": 5,
-                "user_name": "John Doe",
-                "user_email": "john@example.com"
-            }
-        ]
-    }
-    """
-    data: List[ItemWithUserResponse]
-
-
-class ItemDetailResponse(BaseResponse):
-    """
-    Schema for single item detail responses.
-    Extends BaseResponse with single item including user information.
-    
-    Usage:
-    ------
-    - GET /items/item/{item_id} endpoint
-    
-    Example Response:
-    ---------------
-    {
-        "message": "Item retrieved successfully",
-        "status_code": 200,
-        "data": {
-            "id": 1,
-            "name": "Laptop",
-            "description": "Super laptop",
-            "user_id": 5, 
-            "user_name": "John Doe",
-            "user_email": "john@example.com"
-        }
-    }
-    """
-    data: ItemWithUserResponse
+UserWithItemsResponseType = DataResponse[UserWithItemsResponse]
+"""Response type for user retrieval with items"""

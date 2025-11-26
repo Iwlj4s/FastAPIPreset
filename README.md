@@ -35,7 +35,13 @@ All configurations are clearly documented and easy to modify for your specific n
 
    - Request Context for dependency management
 
-   - Structured response schemas
+   - Generic Response Schemas with type safety
+
+- **Modern Response Handling**
+  - Generic `DataResponse[T]` for single object endpoints
+  - Generic `ListResponse[T]` for collection endpoints  
+  - Type-safe response schemas with Pydantic
+  - Consistent API response structure
 
 - **User Authentication**
   - User registration with email and username validation
@@ -82,7 +88,7 @@ FastAPIPreset/
 ├── database/                   # Database configuration and models
 │   ├── database.py              # Database engine and session setup
 │   ├── models.py                # SQLAlchemy data models
-│   ├── response_schemas.py      # Pydantic schemas for API responses
+│   ├── response_schemas.py      # Generic Pydantic schemas for API responses
 │   └── schema.py                # Pydantic schemas for validation
 ├── helpers/                    # Utility functions and helpers
 │   ├── general_helper.py        # HTTP error handling utilities
@@ -267,7 +273,7 @@ ALGORITHM=HS256
    - **Interactive Documentation**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
    - **Alternative Documentation**: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
 
----
+
 
 ## 📚 API Endpoints
 
@@ -555,8 +561,7 @@ class NewModelResponse(BaseModel):
     class Config:
         from_attributes = True
 
-class NewModelCreateResponse(BaseResponse):
-    data: NewModelResponse
+# No need to create response wrapper classes - use generics!
 ```
 
 4. **Implement DAO Methods**
@@ -583,7 +588,7 @@ async def create_new_model(
     request: schema.NewModelCreate,
     current_user: schema.User,
     db: AsyncSession
-) -> response_schemas.NewModelCreateResponse:
+) -> response_schemas.DataResponse[NewModelResponse]:  # Use generic response
     # Business logic and validation
     new_model = await NewModelDAO.create_new_model(
         db=db,
@@ -591,7 +596,7 @@ async def create_new_model(
         user_id=current_user.id
     )
     
-    return response_schemas.NewModelCreateResponse(
+    return response_schemasDataResponse[NewModelResponse](
         message="New model created successfully",
         status_code=200,
         data=response_schemas.NewModelResponse(
@@ -610,7 +615,7 @@ async def create_new_model(
 async def create_new_model_endpoint(
     request: schema.NewModelCreate,
     context: RequestContext = Depends(get_request_context)
-) -> response_schemas.NewModelCreateResponse:
+) -> response_schemas.DataResponse[NewModelResponse]:  # Specify return type
     return await new_model_repository.create_new_model(
         request=request,
         current_user=context.current_user,
@@ -627,7 +632,7 @@ async def new_feature(
     request: schema.NewSchema,
     current_user: schema.User = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
-):
+) -> DataResponse[NewModelResponse]:  # Specify return type
     return await repository.new_feature_logic(
         request=request,
         current_user=current_user,
@@ -635,7 +640,6 @@ async def new_feature(
     )
 ```
 
----
 
 ## 🐛 Troubleshooting
 

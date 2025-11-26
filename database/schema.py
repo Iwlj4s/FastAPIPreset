@@ -23,7 +23,6 @@ class User(BaseModel):
     email: Union[str, None] = Field(default=None, title="User's email")
     password: Union[str, None] = Field(default=None, min_length=4, title="User's password")
 
-
 class UserSignIn(BaseModel):
     """Schema for user login authentication"""
     email: Union[str, None] = Field(default=None, title="User's email")
