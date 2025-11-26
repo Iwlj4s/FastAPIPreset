@@ -273,6 +273,42 @@ ALGORITHM=HS256
    - **Interactive Documentation**: [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)
    - **Alternative Documentation**: [http://127.0.0.1:8000/redoc](http://127.0.0.1:8000/redoc)
 
+<details> <summary><strong>💡 Note: API Testing Tools Recommendation</strong></summary>
+For testing API endpoints, I recommend using specialized tools:
+
+- [Yaak](https://yaak.app/) - Modern, intuitive interface with excellent user experience
+
+   - Clean, distraction-free design
+   
+   - Easy request organization
+   
+   - Great for beginners
+
+- [Postman](https://www.postman.com/) - Industry standard with extensive features
+
+   - Comprehensive testing capabilities
+   
+   - Environment variables and collections
+   
+   - Team collaboration features
+
+Why use these tools?
+
+- Better than browser testing: Proper handling of different HTTP methods
+
+- Header management: Easy JWT token and authentication header setup
+
+- Request organization: Save and organize your API calls
+
+- Environment variables: Manage different configurations (local/dev/prod)
+
+- Response inspection: Detailed view of headers, status codes, and response bodies
+
+**Personal Recommendation:** Try Yaak first - it's lightweight, clean interface makes API testing much more enjoyable, especially when learning FastAPI!
+And it's kinda pretty, lol 
+
+
+</details>
 
 
 ## 📚 API Endpoints
