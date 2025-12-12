@@ -15,6 +15,10 @@ class User(Base):
     name: Mapped[str] = mapped_column(String, nullable=False, unique=True)  # Unique username
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False) # Unique email
     password: Mapped[str] = mapped_column(String)    # Hashed password
+    
+    bio: Mapped[str] = mapped_column(String,        # User's biography 
+                                     nullable=False,
+                                     server_default="User didn't add his bio")
 
     # One-to-many relationship with Item model
     item: Mapped[List["Item"]] = relationship(

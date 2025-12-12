@@ -2,7 +2,8 @@ from sqlalchemy import select, update, delete, and_, func, desc
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional
 
-from database import schema
+from DAO.general_dao import GeneralDAO
+from database import response_schemas, schema
 from database import models
 from helpers import general_helper
 
@@ -140,9 +141,9 @@ class ItemDao:
     
     @classmethod
     async def get_item_by_user_id_and_item_name(cls, 
-                                            db: AsyncSession,
-                                            user_id: int,
-                                            item_name: str) -> Optional[models.Item]:
+                                                db: AsyncSession,
+                                                user_id: int,
+                                                item_name: str) -> Optional[models.Item]:
         """
         Find item by name for specific user.
         Used to prevent duplicate item names per user.
@@ -161,3 +162,24 @@ class ItemDao:
 
         return result.scalar_one_or_none()
     
+    @classmethod
+    async def get_all_items(cls,
+                            db: AsyncSession) -> List[models.Item]:
+        items = await GeneralDAO.get_all_records(db=db, model=models.Item)
+        await general_helper.CheckHTTP404NotFound(founding_item=items, text="Items not found")
+
+        # Format response with user information
+        # Use Response Schema to avoid recursion
+        items_list = []
+        for item in items:
+            item_data = response_schemas.ItemWithUserResponse(
+                id=item.id,
+                name=item.name,
+                description=item.description,
+                user_id=item.user.id,
+                user_name=item.user.name,
+                user_email=item.user.email
+            )
+            items_list.append(item_data)
+
+        return items_list

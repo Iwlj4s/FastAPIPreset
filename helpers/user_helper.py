@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any
 
 from DAO.user_dao import UserDAO
-from database import schema
+from database import response_schemas, schema
 from helpers import password_helper
 from helpers.general_helper import CheckHTTP403FORBIDDEN_BOOL, CheckHTTP404NotFound
 from helpers.jwt_helper import create_access_token
@@ -17,7 +17,7 @@ Handles login process and token generation.
 
 async def take_access_token_for_user(db: AsyncSession, 
                                      response: Response, 
-                                     request: schema.UserSignIn) -> Dict[str, Any]:
+                                     request: schema.UserSignIn) -> response_schemas.CurrentUserResponse:
     """
     Authenticate user and generate access token.
     
@@ -50,9 +50,10 @@ async def take_access_token_for_user(db: AsyncSession,
                         value=access_token, 
                         httponly=True)
 
-    return {
-        'user_access_token': access_token,
-        'email': user.email,
-        'name': user.name,
-        'id': user.id
-    }
+    return response_schemas.CurrentUserResponse(
+        id=user.id,
+        name=user.name,
+        email=user.email,
+        bio=user.bio,
+        user_access_token=access_token
+    )

@@ -3,8 +3,9 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from typing import List, Optional
 
+from DAO.general_dao import GeneralDAO
 from database import response_schemas
-from database.models import User
+from database import models
 from helpers import general_helper
 
 
@@ -16,7 +17,7 @@ class UserDAO:
     @classmethod
     async def get_user_email(cls, 
                              db: AsyncSession, 
-                             user_email: str) -> Optional[User]:
+                             user_email: str) -> Optional[models.User]:
         """
         Find user by email address.
         
@@ -24,7 +25,7 @@ class UserDAO:
         :param user_email: Email to search for
         :return: User object or None
         """
-        query = select(User).where(User.email == str(user_email))
+        query = select(models.User).where(models.User.email == str(user_email))
         email = await db.execute(query)
 
         return email.scalars().first()
@@ -32,7 +33,7 @@ class UserDAO:
     @classmethod
     async def get_user_name(cls, 
                             db: AsyncSession, 
-                            user_name: str) -> Optional[User]:
+                            user_name: str) -> Optional[models.User]:
         """
         Find user by username.
         
@@ -40,7 +41,7 @@ class UserDAO:
         :param user_name: Username to search for
         :return: User object or None
         """
-        query = select(User).where(User.name == str(user_name))
+        query = select(models.User).where(models.User.name == str(user_name))
         name = await db.execute(query)
 
         return name.scalars().first()
@@ -48,7 +49,7 @@ class UserDAO:
     @classmethod
     async def get_user_by_id(cls, 
                              db: AsyncSession, 
-                             user_id: int) -> Optional[User]:
+                             user_id: int) -> Optional[models.User]:
         """
         Find user by ID.
         
@@ -56,7 +57,7 @@ class UserDAO:
         :param user_id: User ID to find
         :return: User object or None
         """
-        query = select(User).where(User.id == user_id)
+        query = select(models.User).where(models.User.id == user_id)
         result = await db.execute(query)
 
         user = result.scalars().first()
@@ -81,6 +82,7 @@ class UserDAO:
             id=user.id,
             name=user.name,
             email=user.email,
+            bio=user.bio,
             items=[
                 response_schemas.ItemResponse(
                     id=item.id,
@@ -93,3 +95,33 @@ class UserDAO:
         )
 
         return user_data
+    
+    @classmethod
+    async def get_all_users(cls,
+                            db: AsyncSession) -> response_schemas.UserResponse:
+        # Get all users
+        users = await GeneralDAO.get_all_records(db=db, model=models.User)
+        await general_helper.CheckHTTP404NotFound(founding_item=users, text="Users not found")
+        
+        # Format response with user items (For now this will be here, I'll move it)
+        # Use Response Schema to avoid recursion
+        users_list = []
+        for user in users:
+            user_data = response_schemas.UserResponse(
+                id=user.id,
+                name=user.name,
+                email=user.email,
+                bio=user.bio,
+                items=[
+                    response_schemas.ItemResponse(
+                        id=item.id,
+                        name=item.name,
+                        description=item.description,
+                        user_id=item.user_id
+                    )
+                    for item in user.item
+                ]
+            )
+            users_list.append(user_data)
+
+        return users_list

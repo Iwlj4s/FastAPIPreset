@@ -138,7 +138,6 @@ async def update_item(item_id: int,
     )
 
 
-
 async def delete_item(item_id: int,
                       user_id: int,
                       db: AsyncSession) -> response_schemas.ItemDeleteResponse:
@@ -200,20 +199,17 @@ async def show_item(item_id: int,
                                              db=db)
     await general_helper.CheckHTTP404NotFound(founding_item=item, text="Item not found")
     
-    # Use Response Schema
-    item_data = response_schemas.ItemWithUserResponse(
-        id=item.id,
-        name=item.name,
-        description=item.description,
-        user_id=item.user.id,
-        user_name=item.user.name,
-        user_email=item.user.email
-    )
-    
     return response_schemas.ItemDetailResponse(
         message="Item retrieved successfully",
         status_code=200,
-        data=item_data
+        data=response_schemas.ItemWithUserResponse(
+            id=item.id,
+            name=item.name,
+            description=item.description,
+            user_id=item.user.id,
+            user_name=item.user.name,
+            user_email=item.user.email
+        )
     )
 
 async def get_all_items(db: AsyncSession) -> response_schemas.ItemListResponse:
@@ -230,22 +226,8 @@ async def get_all_items(db: AsyncSession) -> response_schemas.ItemListResponse:
     :raises:    HTTPException 404
                 If items not found
     """
-    items = await GeneralDAO.get_all_records(db=db, model=models.Item)
-    await general_helper.CheckHTTP404NotFound(founding_item=items, text="Items not found")
 
-    # Format response with user information
-    # Use Response Schema to avoid recursion
-    items_list = []
-    for item in items:
-        item_data = response_schemas.ItemWithUserResponse(
-            id=item.id,
-            name=item.name,
-            description=item.description,
-            user_id=item.user.id,
-            user_name=item.user.name,
-            user_email=item.user.email
-        )
-        items_list.append(item_data)
+    items_list = await ItemDao.get_all_items(db=db)
     
     return response_schemas.ItemListResponse(
         message="Items retrieved successfully",

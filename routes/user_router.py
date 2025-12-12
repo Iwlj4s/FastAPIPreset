@@ -27,7 +27,7 @@ user_router = APIRouter(
 
 @user_router.post("/sign_up", status_code=201)
 async def sign_up(request: schema.User,
-                  db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
+                  db: AsyncSession = Depends(get_db)) -> response_schemas.UserCreateResponse:
     """
     Register a new user in the system.
     
@@ -41,7 +41,7 @@ async def sign_up(request: schema.User,
 @user_router.post("/sign_in", status_code=200)
 async def sign_in(request: schema.UserSignIn,
                   response: Response,
-                  db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
+                  db: AsyncSession = Depends(get_db)) -> response_schemas.UserLoginResponse:
     """
     Authenticate user and return access token.
     
@@ -64,7 +64,7 @@ async def logout(response: Response) -> Dict[str, str]:
     return {'message': 'User logout'}
 
 @user_router.get("/")
-async def get_users_for_user(db: AsyncSession = Depends(get_db)) -> List[response_schemas.UserWithItemsResponse]:
+async def get_users_for_user(db: AsyncSession = Depends(get_db)) -> response_schemas.UserListResponse:
     """
     Get list of all users in the system.
     Public endpoint - no authentication required.
@@ -72,8 +72,7 @@ async def get_users_for_user(db: AsyncSession = Depends(get_db)) -> List[respons
     Returns list of all users with their items.
     """
 
-    users_list = await user_repository.get_all_users(db=db)
-    return users_list
+    return await user_repository.get_all_users(db=db)
 
 @user_router.get("/user/{user_id}", status_code=200)
 async def get_user(user_id: int,
@@ -122,7 +121,7 @@ async def get_me(request_context: RequestContext = Depends(get_request_context))
     }
 
 @user_router.get("/me/items", status_code=200)
-async def get_current_user_items(request_context: RequestContext = Depends(get_request_context)) -> Dict[str, Any]:
+async def get_current_user_items(request_context: RequestContext = Depends(get_request_context)) -> response_schemas.UserWithItemsResponse:
     """
     Get all items belonging to the current authenticated user.
     Requires valid JWT token.
@@ -139,7 +138,7 @@ async def get_current_user_items(request_context: RequestContext = Depends(get_r
 
 @user_router.get("/me/item/{item_id}", status_code=200)
 async def get_current_user_item(item_id: int,
-                                request_context: RequestContext = Depends(get_request_context)) -> Dict[str, Any]:
+                                request_context: RequestContext = Depends(get_request_context)) -> response_schemas.ItemDetailResponse:
     """
     Get specific item belonging to the current user.
     Requires valid JWT token and item ownership.

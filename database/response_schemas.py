@@ -106,10 +106,22 @@ class UserResponse(BaseModel):
     id: int
     name: str
     email: str
-    
+    bio: str
+
     class Config:
         from_attributes = True
 
+class CurrentUserResponse(UserResponse):
+    """
+    Basic item schema without relationships to avoid recursion.
+    Contains essential item information for API responses.
+    
+    Fields:
+    - user_access_token: User token for get current user
+    
+    Use when you need item data without nested user information.
+    """
+    user_access_token: str
 
 class ItemResponse(BaseModel):
     """
@@ -168,8 +180,23 @@ class ItemWithUserResponse(ItemResponse):
     """
     user_name: str
     user_email: str
+    
 
+# Response type aliases for better readability in route annotations
+# Users
+UserListResponse = ListResponse[UserResponse]  
+"""Response type for get all users endpoints"""
 
+UserCreateResponse = DataResponse[UserResponse]
+"""Response type for user creation endpoints"""
+
+UserLoginResponse = DataResponse[CurrentUserResponse]
+"""Response type for get current user"""
+
+UserWithItemsResponse = DataResponse[UserWithItemsResponse]
+"""Response type for user retrieval with items"""
+
+# Items
 ItemCreateResponse = DataResponse[ItemResponse]
 """Response type for item creation endpoints"""
 
@@ -184,6 +211,3 @@ ItemDetailResponse = DataResponse[ItemWithUserResponse]
 
 ItemListResponse = ListResponse[ItemWithUserResponse]
 """Response type for item list retrieval with user info"""
-
-UserWithItemsResponseType = DataResponse[UserWithItemsResponse]
-"""Response type for user retrieval with items"""

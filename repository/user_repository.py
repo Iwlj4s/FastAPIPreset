@@ -27,7 +27,7 @@ Handles user authentication, registration, and user-related operations.
 
 
 async def sign_up(request: schema.User,
-                  db: AsyncSession) -> Dict[str, Any]:
+                  db: AsyncSession) -> response_schemas.UserCreateResponse:
     
     """
     Register a new user in the system.
@@ -61,29 +61,29 @@ async def sign_up(request: schema.User,
 
     new_user = models.User(name=request.name, 
                            email=request.email, 
-                           password=hash_password)
+                           password=hash_password,
+                           bio=request.bio)
     db.add(new_user)
 
     await db.commit()
     await db.refresh(new_user)
     print(f"   User created with ID: {new_user.id}")
 
-    return {
-        'message': "Register successfully",
-        'status_code': 201,
-        'status': "success",
-        'data': {
-            'id': new_user.id,
-            'name': new_user.name,
-            'email': new_user.email
-        }
-    }
+    return response_schemas.UserCreateResponse(
+        message="User has been created successfully",
+        status_code=200,
+        data=response_schemas.UserResponse(
+            id=new_user.id,
+            name=new_user.name,
+            email=new_user.email,
+            bio=new_user.bio
+        )
+    )
 
 
 async def login(request: schema.UserSignIn,
                 response: Response,
-                db: AsyncSession) -> Dict[str, Any]:
-    
+                db: AsyncSession) -> response_schemas.UserLoginResponse:
     """
     Authenticate user and generate access token.
     
@@ -104,13 +104,11 @@ async def login(request: schema.UserSignIn,
             'error': "FORBIDDEN"
         }
 
-    return {
-        "user_access_token": user['user_access_token'],
-        "email": user['email'],
-        "name": user['name'],
-        "id": user['id']
-    }
-
+    return response_schemas.UserLoginResponse(
+        message="Login successful",
+        status_code=200,
+        data=user
+    )
 
 async def get_current_user(db: AsyncSession = Depends(get_db),
                            token: str = Depends(get_token)) -> models.User:
@@ -139,7 +137,7 @@ async def get_current_user(db: AsyncSession = Depends(get_db),
 
 
 async def get_current_user_items(current_user: schema.User, 
-                                 db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
+                                 db: AsyncSession = Depends(get_db)) -> response_schemas.UserWithItemsResponse:
     """
     Get all items belonging to the current authenticated user.
     
@@ -153,27 +151,17 @@ async def get_current_user_items(current_user: schema.User,
     await CheckHTTP404NotFound(items, "No items found for this user")
 
     # Use Response Schema to avoid recursion
-    items_data = [
-        response_schemas.ItemResponse(
-            id=item.id,
-            name=item.name,
-            description=item.description,
-            user_id=item.user_id
-        )
-        for item in items
-    ]
+    user_data = await UserDAO.get_user_with_items(user_id=current_user.id, db=db)
 
-    return {
-        "user_id": current_user.id,
-        "user_name": current_user.name,
-        "items": items_data
-    }
-
-
+    return response_schemas.UserWithItemsResponseType(
+        message="User items retrieved successfully",
+        status_code=200,
+        data=user_data
+    )
 
 async def get_current_user_item(item_id: int,
                                 current_user: schema.User,
-                                db: AsyncSession = Depends(get_db)) -> Dict[str, Any]:
+                                db: AsyncSession = Depends(get_db)) -> response_schemas.ItemDetailResponse:
     """
     Get specific item belonging to the current user.
     
@@ -190,22 +178,21 @@ async def get_current_user_item(item_id: int,
                                              item_id=item_id)
     await CheckHTTP404NotFound(founding_item=item, text="Item not found")
 
-    # Using Response Schema
-    item_data = response_schemas.ItemResponse(
-        id=item.id,
-        name=item.name,
-        description=item.description,
-        user_id=item.user_id
+    return response_schemas.ItemDetailResponse(
+        message="Item retrieved successfully",
+        status_code=200,
+        data=response_schemas.ItemWithUserResponse(
+            id=item.id,
+            name=item.name,
+            description=item.description,
+            user_id=item.user.id,
+            user_name=item.user.name,
+            user_email=item.user.email
+        )
     )
 
-    return {
-        "user_id": current_user.id,
-        "user_name": current_user.name,
-        "item": item_data
-    }
 
-
-async def get_all_users(db: AsyncSession) -> List[response_schemas.UserWithItemsResponse]:
+async def get_all_users(db: AsyncSession) -> response_schemas.UserWithItemsResponse:
     """
     Retrieve all users from the system with their items.
     
@@ -215,25 +202,11 @@ async def get_all_users(db: AsyncSession) -> List[response_schemas.UserWithItems
     """
     users = await GeneralDAO.get_all_records(db=db, model=models.User)
     await general_helper.CheckHTTP404NotFound(founding_item=users, text="Users not found")
+
+    users = await UserDAO.get_all_users(db=db)
     
-    # Format response with user items
-    # Use Response Schema to avoid recursion
-    users_list = []
-    for user in users:
-        user_data = response_schemas.UserWithItemsResponse(
-            id=user.id,
-            name=user.name,
-            email=user.email,
-            items=[
-                response_schemas.ItemResponse(
-                    id=item.id,
-                    name=item.name,
-                    description=item.description,
-                    user_id=item.user_id
-                )
-                for item in user.item
-            ]
-        )
-        users_list.append(user_data)
-    
-    return users_list
+    return response_schemas.UserListResponse(
+        message="Users retrieved successfully",
+        status_code=200,
+        data=users
+    )

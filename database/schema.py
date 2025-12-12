@@ -22,6 +22,7 @@ class User(BaseModel):
     name: Union[str, None] = Field(default=None, min_length=3, title="User name")
     email: Union[str, None] = Field(default=None, title="User's email")
     password: Union[str, None] = Field(default=None, min_length=4, title="User's password")
+    bio: Optional[str] = Field(default=None, min_length=10, title="User's biography")
 
 class UserSignIn(BaseModel):
     """Schema for user login authentication"""
@@ -32,3 +33,4 @@ class UserUpdate(BaseModel):
     """Schema for update user"""
     name: Union[str, None] = Field(default=None, min_length=3, title="User name")
     email: Union[str, None] = Field(default=None, title="User's email")
+    bio: Optional[str] = Field(default=None, min_length=10, title="User's biography")
