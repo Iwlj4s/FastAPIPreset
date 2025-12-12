@@ -76,7 +76,7 @@ async def get_users_for_user(db: AsyncSession = Depends(get_db)) -> response_sch
 
 @user_router.get("/user/{user_id}", status_code=200)
 async def get_user(user_id: int,
-                   db: AsyncSession = Depends(get_db)) -> response_schemas.UserWithItemsResponse:
+                   db: AsyncSession = Depends(get_db)) -> response_schemas.UserWithItemsDataResponse:
     """
     Get user profile by ID.
     Public endpoint - no authentication required.
@@ -89,7 +89,11 @@ async def get_user(user_id: int,
     # Use Response Schema to avoid recursion
     user_data = await UserDAO.get_user_with_items(user_id=user_id, db=db)
     
-    return user_data
+    return response_schemas.UserWithItemsDataResponse(
+        message="User retrieved successfully",
+        status_code=200,
+        data=user_data
+    )
 
 @user_router.get("/me/", status_code=200)
 async def get_me(user_data: schema.User = Depends(get_current_user)) -> schema.User:
@@ -121,7 +125,7 @@ async def get_me(request_context: RequestContext = Depends(get_request_context))
     }
 
 @user_router.get("/me/items", status_code=200)
-async def get_current_user_items(request_context: RequestContext = Depends(get_request_context)) -> response_schemas.UserWithItemsResponse:
+async def get_current_user_items(request_context: RequestContext = Depends(get_request_context)) -> response_schemas.UserWithItemsDataResponse:
     """
     Get all items belonging to the current authenticated user.
     Requires valid JWT token.

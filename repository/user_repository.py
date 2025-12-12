@@ -137,7 +137,7 @@ async def get_current_user(db: AsyncSession = Depends(get_db),
 
 
 async def get_current_user_items(current_user: schema.User, 
-                                 db: AsyncSession = Depends(get_db)) -> response_schemas.UserWithItemsResponse:
+                                 db: AsyncSession = Depends(get_db)) -> response_schemas.UserWithItemsDataResponse:
     """
     Get all items belonging to the current authenticated user.
     
@@ -153,7 +153,7 @@ async def get_current_user_items(current_user: schema.User,
     # Use Response Schema to avoid recursion
     user_data = await UserDAO.get_user_with_items(user_id=current_user.id, db=db)
 
-    return response_schemas.UserWithItemsResponseType(
+    return response_schemas.UserWithItemsDataResponse(
         message="User items retrieved successfully",
         status_code=200,
         data=user_data
@@ -192,7 +192,7 @@ async def get_current_user_item(item_id: int,
     )
 
 
-async def get_all_users(db: AsyncSession) -> response_schemas.UserWithItemsResponse:
+async def get_all_users(db: AsyncSession) -> response_schemas.UserListResponse:
     """
     Retrieve all users from the system with their items.
     

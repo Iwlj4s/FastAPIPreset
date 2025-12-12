@@ -112,15 +112,6 @@ class UserDAO:
                 name=user.name,
                 email=user.email,
                 bio=user.bio,
-                items=[
-                    response_schemas.ItemResponse(
-                        id=item.id,
-                        name=item.name,
-                        description=item.description,
-                        user_id=item.user_id
-                    )
-                    for item in user.item
-                ]
             )
             users_list.append(user_data)
 

@@ -193,7 +193,7 @@ UserCreateResponse = DataResponse[UserResponse]
 UserLoginResponse = DataResponse[CurrentUserResponse]
 """Response type for get current user"""
 
-UserWithItemsResponse = DataResponse[UserWithItemsResponse]
+UserWithItemsDataResponse = DataResponse[UserWithItemsResponse]
 """Response type for user retrieval with items"""
 
 # Items
