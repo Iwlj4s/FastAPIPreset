@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List, Optional, Any, Type
 
 from database import models, schema
-from helpers import general_helper
+from helpers import exception_helper
 
 class GeneralDAO:
     """

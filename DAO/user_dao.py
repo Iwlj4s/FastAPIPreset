@@ -6,7 +6,8 @@ from typing import List, Optional
 from DAO.general_dao import GeneralDAO
 from database import response_schemas
 from database import models
-from helpers import general_helper
+from helpers import exception_helper
+from services.user_services import UserService
 
 
 class UserDAO:
@@ -76,7 +77,7 @@ class UserDAO:
             :return: User data
         """
         user = await cls.get_user_by_id(user_id=user_id, db=db)
-        await general_helper.CheckHTTP404NotFound(founding_item=user, text="User not found")
+        await exception_helper.CheckHTTP404NotFound(founding_item=user, text="User not found")
 
         user_data = response_schemas.UserWithItemsResponse(
             id=user.id,
@@ -99,20 +100,19 @@ class UserDAO:
     @classmethod
     async def get_all_users(cls,
                             db: AsyncSession) -> response_schemas.UserResponse:
-        # Get all users
-        users = await GeneralDAO.get_all_records(db=db, model=models.User)
-        await general_helper.CheckHTTP404NotFound(founding_item=users, text="Users not found")
+        """
+        Get all users from database and return formatted response.
+        Delegates formatting to UserService.
         
-        # Format response with user items (For now this will be here, I'll move it)
-        # Use Response Schema to avoid recursion
-        users_list = []
-        for user in users:
-            user_data = response_schemas.UserResponse(
-                id=user.id,
-                name=user.name,
-                email=user.email,
-                bio=user.bio,
-            )
-            users_list.append(user_data)
+        :param db: Database session
+        :return: List[response_schemas.UserResponse] - List of formatted user responses
+        """
+
+        # Get all users from DB
+        users = await GeneralDAO.get_all_records(db=db, model=models.User)
+        await exception_helper.CheckHTTP404NotFound(founding_item=users, text="Users not found")
+        
+        # Delegate formatting to UserService to separate concerns
+        users_list = await UserService.get_formated_users(users=users)
 
         return users_list

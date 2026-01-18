@@ -5,7 +5,8 @@ from typing import List, Optional
 from DAO.general_dao import GeneralDAO
 from database import response_schemas, schema
 from database import models
-from helpers import general_helper
+from helpers import exception_helper
+from services.item_services import ItemService
 
 
 class ItemDao:
@@ -51,7 +52,7 @@ class ItemDao:
         item = await cls.get_item_by_user_id(db=db, 
                                             item_id=item_id, 
                                             user_id=user_id)
-        await general_helper.CheckHTTP404NotFound(founding_item=item, 
+        await exception_helper.CheckHTTP404NotFound(founding_item=item, 
                                               text="Item not found or you don't have permission to update it")
         update_data = item_data.dict(exclude_unset=True)
         for k, v in update_data.items():
@@ -164,22 +165,19 @@ class ItemDao:
     
     @classmethod
     async def get_all_items(cls,
-                            db: AsyncSession) -> List[models.Item]:
+                            db: AsyncSession) -> response_schemas.ItemResponse:
+        """
+        Get all items from database with associated user information.
+        Delegates response formatting to ItemService.
+        
+        :param db: Database session
+        :return: List[response_schemas.ItemWithUserResponse] - Formatted items with user data
+        """
+
+        # Get all Items from DB
         items = await GeneralDAO.get_all_records(db=db, model=models.Item)
-        await general_helper.CheckHTTP404NotFound(founding_item=items, text="Items not found")
+        await exception_helper.CheckHTTP404NotFound(founding_item=items, text="Items not found")
 
-        # Format response with user information
-        # Use Response Schema to avoid recursion
-        items_list = []
-        for item in items:
-            item_data = response_schemas.ItemWithUserResponse(
-                id=item.id,
-                name=item.name,
-                description=item.description,
-                user_id=item.user.id,
-                user_name=item.user.name,
-                user_email=item.user.email
-            )
-            items_list.append(item_data)
-
+        # Delegate formatting to ItemService to separate concerns
+        items_list = await ItemService.get_formated_items(items=items)
         return items_list

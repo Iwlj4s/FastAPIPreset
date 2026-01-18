@@ -6,7 +6,7 @@ from DAO.user_dao import UserDAO
 from context.request_context import RequestContext, get_request_context
 from database.database import get_db
 from database import schema, models, response_schemas
-from helpers import general_helper
+from helpers import exception_helper
 
 from repository.user_repository import get_current_user
 from repository import user_repository

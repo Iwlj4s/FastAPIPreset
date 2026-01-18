@@ -10,8 +10,8 @@ from database.database import get_db
 from database import models, schema, response_schemas
 
 from helpers import password_helper, user_helper
-from helpers import general_helper
-from helpers.general_helper import CheckHTTP404NotFound, CheckHTTP409Conflict
+from helpers import exception_helper
+from helpers.exception_helper import CheckHTTP404NotFound, CheckHTTP409Conflict
 from helpers.token_helper import get_token, verify_token
 
 from DAO.general_dao import GeneralDAO
@@ -201,7 +201,7 @@ async def get_all_users(db: AsyncSession) -> response_schemas.UserListResponse:
     :raises HTTPException: 404 if no users found
     """
     users = await GeneralDAO.get_all_records(db=db, model=models.User)
-    await general_helper.CheckHTTP404NotFound(founding_item=users, text="Users not found")
+    await exception_helper.CheckHTTP404NotFound(founding_item=users, text="Users not found")
 
     users = await UserDAO.get_all_users(db=db)
     

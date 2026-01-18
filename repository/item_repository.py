@@ -7,7 +7,7 @@ from starlette.responses import Response
 
 from database import schema, models, response_schemas
 
-from helpers import general_helper
+from helpers import exception_helper
 from DAO.general_dao import GeneralDAO
 from DAO.item_dao import ItemDao
 from database.database import get_db
@@ -57,7 +57,7 @@ async def create_item(request: schema.Item,
                                                                 user_id=current_user.id, 
                                                                 item_name=request.name)
     # Raise conflict error if duplicate name found
-    await general_helper.CheckHTTP409Conflict(founding_item=user_item, 
+    await exception_helper.CheckHTTP409Conflict(founding_item=user_item, 
                                               text="You already have an item with this name")
     # Create new item
     new_item = await ItemDao.create_item(db=db,
@@ -117,7 +117,7 @@ async def update_item(item_id: int,
                                             item_id=item_id, 
                                             user_id=user_id)
     
-    await general_helper.CheckHTTP404NotFound(founding_item=item, 
+    await exception_helper.CheckHTTP404NotFound(founding_item=item, 
                                               text="Item not found or you don't have permission to update it")
     
     updated_item = await GeneralDAO.update_record(record=item,
@@ -164,7 +164,7 @@ async def delete_item(item_id: int,
     item = await ItemDao.get_item_by_user_id(db=db, 
                                              item_id=item_id, 
                                              user_id=user_id)
-    await general_helper.CheckHTTP404NotFound(founding_item=item, 
+    await exception_helper.CheckHTTP404NotFound(founding_item=item, 
                                               text="Item not found or you don't have permission to delete it")
 
     # Delete the item
@@ -197,7 +197,7 @@ async def show_item(item_id: int,
     item = await GeneralDAO.get_record_by_id(record_id=item_id,
                                              model=models.Item,
                                              db=db)
-    await general_helper.CheckHTTP404NotFound(founding_item=item, text="Item not found")
+    await exception_helper.CheckHTTP404NotFound(founding_item=item, text="Item not found")
     
     return response_schemas.ItemDetailResponse(
         message="Item retrieved successfully",

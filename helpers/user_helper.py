@@ -5,7 +5,7 @@ from typing import Dict, Any
 from DAO.user_dao import UserDAO
 from database import response_schemas, schema
 from helpers import password_helper
-from helpers.general_helper import CheckHTTP403FORBIDDEN_BOOL, CheckHTTP404NotFound
+from helpers.exception_helper import CheckHTTP403FORBIDDEN_BOOL, CheckHTTP404NotFound
 from helpers.jwt_helper import create_access_token
 
 
