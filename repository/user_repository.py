@@ -1,4 +1,4 @@
-from fastapi import Depends
+from fastapi import Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Dict, Any, List
 
@@ -11,7 +11,7 @@ from database import models, schema, response_schemas
 
 from helpers import password_helper, user_helper
 from helpers import exception_helper
-from helpers.exception_helper import CheckHTTP404NotFound, CheckHTTP409Conflict
+from helpers.exception_helper import CheckHTTP404NotFound, CheckHTTP409Conflict, CheckHTTP403FORBIDDEN_BOOL
 from helpers.token_helper import get_token, verify_token
 
 from DAO.general_dao import GeneralDAO
@@ -135,6 +135,48 @@ async def get_current_user(db: AsyncSession = Depends(get_db),
 
     return user
 
+
+async def update_me(user_id: int,
+                    user_data: schema.UserUpdate,
+                    current_user: schema.User,
+                    db: AsyncSession) -> response_schemas.UserUpdateResponse:
+    """
+    Update current authenticated user's profile.        
+    
+    :param user_id: ID of the user to update
+    :param user_data: Data to update
+    :param current_user: Authenticated user
+    :param db: Database session
+
+    :return: Updated user data
+    :raises HTTPException: 404 if user not found or 403 if updating another user's profile
+    """
+
+    await CheckHTTP403FORBIDDEN_BOOL(condition=(user_id != current_user.id),
+                                    text="You can update only your own profile")
+    
+    if not user_data.dict(exclude_unset=True):
+        raise HTTPException(status_code=400, detail="No fields for update")
+    
+    updating_user = await GeneralDAO.get_record_by_id(record_id=user_id,
+                                                      model=models.User,
+                                                      db=db)
+    
+    await CheckHTTP404NotFound(founding_item=updating_user, text="User not found")
+
+    updated_user = await GeneralDAO.update_record(record=updating_user,
+                                                  update_data=user_data,
+                                                  db=db)
+    return response_schemas.UserUpdateResponse(
+        message="User has been updated",
+        status_code=200,
+        data = response_schemas.UserResponse(
+            id=updated_user.id,
+            name=updated_user.name,
+            email=updated_user.email,
+            bio=updated_user.bio
+        )
+    )
 
 async def get_current_user_items(current_user: schema.User, 
                                  db: AsyncSession = Depends(get_db)) -> response_schemas.UserWithItemsDataResponse:

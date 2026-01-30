@@ -190,6 +190,9 @@ UserListResponse = ListResponse[UserResponse]
 UserCreateResponse = DataResponse[UserResponse]
 """Response type for user creation endpoints"""
 
+UserUpdateResponse = DataResponse[UserResponse]
+"""Response type for user update endpoints"""
+
 UserLoginResponse = DataResponse[CurrentUserResponse]
 """Response type for get current user"""
 

@@ -125,7 +125,7 @@ async def update_item(item_id: int,
                                                   db=db)
     
     # TODO: Add check for 'name' or other stuff duplicate
-    
+
     return response_schemas.ItemUpdateResponse(
         message="Item has been updated",
         status_code=200,

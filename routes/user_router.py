@@ -107,22 +107,24 @@ async def get_me(user_data: schema.User = Depends(get_current_user)) -> schema.U
     return user_data
 
 @user_router.patch("/me/update", status_code=200)
-async def get_me(request_context: RequestContext = Depends(get_request_context)):
+async def update_me(user_data: schema.UserUpdate, 
+                    request_context: RequestContext = Depends(get_request_context)) -> response_schemas.UserUpdateResponse:
     """
     Update current user using PATCH method.
     Requires valid JWT token.
-    
 
+    - **user_data**: Data to update (request body)
     - **request_context**: Request Context which use basic stuff:
         - **current_user**: Automatically injected authenticated user
         - **db**: Database session dependency
-        
+
     Returns updated current user's data.
     """
 
-    return {
-        "message": "For now method not allowed"
-    }
+    return await user_repository.update_me(user_id=request_context.current_user.id,
+                                           user_data=user_data,
+                                           current_user=request_context.current_user,
+                                           db=request_context.db)
 
 @user_router.get("/me/items", status_code=200)
 async def get_current_user_items(request_context: RequestContext = Depends(get_request_context)) -> response_schemas.UserWithItemsDataResponse:
