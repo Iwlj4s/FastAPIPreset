@@ -142,7 +142,7 @@ async def update_me(user_id: int,
                     db: AsyncSession) -> response_schemas.UserUpdateResponse:
     """
     Update current authenticated user's profile.        
-    
+
     :param user_id: ID of the user to update
     :param user_data: Data to update
     :param current_user: Authenticated user
@@ -164,9 +164,11 @@ async def update_me(user_id: int,
     
     await CheckHTTP404NotFound(founding_item=updating_user, text="User not found")
 
-    updated_user = await GeneralDAO.update_record(record=updating_user,
+    updated_user = await GeneralDAO.update_record(model=models.User,
+                                                  record=updating_user,
                                                   update_data=user_data,
                                                   db=db)
+
     return response_schemas.UserUpdateResponse(
         message="User has been updated",
         status_code=200,

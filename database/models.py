@@ -27,7 +27,6 @@ class User(Base):
         lazy="selectin" # Load related items with user
     )
 
-
 class Item(Base):
     """
     Item model.

@@ -120,12 +120,11 @@ async def update_item(item_id: int,
     await exception_helper.CheckHTTP404NotFound(founding_item=item, 
                                               text="Item not found or you don't have permission to update it")
     
-    updated_item = await GeneralDAO.update_record(record=item,
+    updated_item = await GeneralDAO.update_record(model=models.Item,
+                                                  record=item,
                                                   update_data=item_data,
                                                   db=db)
     
-    # TODO: Add check for 'name' or other stuff duplicate
-
     return response_schemas.ItemUpdateResponse(
         message="Item has been updated",
         status_code=200,
