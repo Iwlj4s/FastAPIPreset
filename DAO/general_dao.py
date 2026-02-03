@@ -102,20 +102,13 @@ class GeneralDAO:
         elif not isinstance(update_data, dict):
             update_data = dict(update_data)
         
-        # Using ValidationService before update
-        try:
-            await ValidationService.validate_update(
-                model_class=model,
-                record=record,
-                update_data=update_data,
-                db=db
-            )
-        except HTTPException as e:
-            # Get HTTPException from ValidationService
-            raise e
-        except Exception as e:
-            # Logging other exceptions
-            raise HTTPException(status_code=400, detail=f"Validation error: {str(e)}")
+        # Validate update data (ValidationService handles all exceptions internally)
+        await ValidationService.validate_update(
+            model_class=model,
+            record=record,
+            update_data=update_data,
+            db=db
+        )
         
         # Updating
         for field, value in update_data.items():
@@ -124,16 +117,12 @@ class GeneralDAO:
         try:
             await db.commit()
         except IntegrityError as e:
-            # Handle database integrity constraint violations
+            # Handle database integrity constraint violations as a safety net
             await db.rollback()
             raise HTTPException(
                 status_code=409,
                 detail="This value already exists or violates a database constraint"
             )
-        except Exception as e:
-            # Handle other database errors
-            await db.rollback()
-            raise HTTPException(status_code=400, detail=f"Database error: {str(e)}")
         
         await db.refresh(record)
 

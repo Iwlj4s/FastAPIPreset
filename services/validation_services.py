@@ -1,6 +1,7 @@
 from typing import Type, Any, Dict, Optional
 from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 from fastapi import HTTPException
 
 from database import models
@@ -30,30 +31,6 @@ class ValidationService:
     """
 
     VALIDATION_RULES = {
-        """
-        Dictionary with validation rules for each model.
-        
-        Structure:
-            "ModelName": {
-                "unique_fields": [...],              # Globally unique fields (across entire DB)
-                "required_fields": [...],            # Required fields
-                "unique_per_user_fields": [...]      # Unique within a single user
-            }
-        
-        Field types:
-        - unique_fields: Field must be unique across the entire table.
-                        Example: email, username.
-                        Check: no two records with the same value.
-        
-        - required_fields: Field cannot be None/empty.
-                          Used when creating a new record.
-                          (Not implemented in this file, see repositories)
-        
-        - unique_per_user_fields: Field must be unique for a specific user.
-                                 Example: project name, folder name.
-                                 Check: no two records with the same value AND the same user_id.
-                                 !Requires user_id attribute in the model!
-        """
         "User": {
             "unique_fields": ["email", "name"],
             "required_fields": ["email", "name", "password"]
@@ -65,6 +42,31 @@ class ValidationService:
             "unique_per_user_fields": ["name"]
         }
     }
+
+    """
+    Dictionary with validation rules for each model.
+    
+    Structure:
+        "ModelName": {
+            "unique_fields": [...],              # Globally unique fields (across entire DB)
+            "required_fields": [...],            # Required fields
+            "unique_per_user_fields": [...]      # Unique within a single user
+        }
+    
+    Field types:
+    - unique_fields: Field must be unique across the entire table.
+                    Example: email, username.
+                    Check: no two records with the same value.
+    
+    - required_fields: Field cannot be None/empty.
+                      Used when creating a new record.
+                      (Not implemented in this file, see repositories)
+    
+    - unique_per_user_fields: Field must be unique for a specific user.
+                             Example: project name, folder name.
+                             Check: no two records with the same value AND the same user_id.
+                             !Requires user_id attribute in the model!
+    """
 
     @classmethod
     def get_validation_rules(cls, model_class: Type) -> Dict[str, Any]:
@@ -240,9 +242,9 @@ class ValidationService:
         rules = cls.get_validation_rules(model_class)
         unique_fields = rules.get("unique_fields", [])
 
-        # Global check for unique fields
+        # Global check for unique fields - ONLY fields that are being updated
         for field in unique_fields:
-            # Check only fields present in update_data
+            # Check ONLY fields present in update_data (fields being changed)
             if field in update_data:
                 value = update_data[field]
                 if value is not None:
@@ -259,9 +261,10 @@ class ValidationService:
                             detail=f"Value '{value}' for field '{field}' already exists",
                         )
 
-        # Per-user check for unique fields
+        # Per-user check for unique fields - ONLY fields that are being updated
         if "unique_per_user_fields" in rules:
             for field in rules["unique_per_user_fields"]:
+                # Check ONLY fields present in update_data (fields being changed)
                 if field in update_data:
                     value = update_data[field]
                     if value is None:
