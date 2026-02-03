@@ -1,10 +1,13 @@
-from sqlalchemy import select
+from fastapi import HTTPException
+from sqlalchemy import exists, select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import IntegrityError
 
 from typing import List, Optional, Any, Type
 
 from database import models, schema
 from helpers import exception_helper
+from services.validation_services import ValidationService
 
 class GeneralDAO:
     """
@@ -79,6 +82,7 @@ class GeneralDAO:
     
     @classmethod
     async def update_record(cls,
+                            model: Any,
                             record: Any,
                             update_data: Any,
                             db: AsyncSession) -> Any:
@@ -86,37 +90,40 @@ class GeneralDAO:
         Update ANY database record with provided data.
         Universal method for all models that supports partial updates.
         
-        :param db:  AsyncSession
-                    Database session for executing queries
-        :param update_data:   Any 
-                        Pydantic schema with update data (e.g., ItemUpdate, UserUpdate)        
-        :param record:  Any
-                        Database record object to update (User instance, Item instance, etc.)
-        :return:    Any 
-                    Updated record object from database
-
-        How it works:
-        ---------------
-        1. Converts Pydantic model to dictionary, excluding unset fields
-        2. Applies each field update to the database record
-        3. Commits changes to database
-        4. Refreshes the record from database
-
-        Usage Example:
-        ---------------
-        **Get all users** 
-        - updated_item = await GeneralDAO.update_record(item, item_update_data, db)
+        :param model: SQLAlchemy model class
+        :param record: Database record object to update
+        :param update_data: Pydantic schema or dict with update data
+        :param db: Database session
+        :return: Updated record object
         """
         # Convert Pydantic model to dictionary, excluding unset fields
-        # This allows partial updates - only provided fields will be updated
-        update_data = update_data.dict(exclude_unset=True)
-
-        # Apply all updates to the record using reflection
+        if hasattr(update_data, "dict"):
+            update_data = update_data.dict(exclude_unset=True)
+        elif not isinstance(update_data, dict):
+            update_data = dict(update_data)
+        
+        # Validate update data (ValidationService handles all exceptions internally)
+        await ValidationService.validate_update(
+            model_class=model,
+            record=record,
+            update_data=update_data,
+            db=db
+        )
+        
+        # Updating
         for field, value in update_data.items():
             setattr(record, field, value)
 
-        # Commit changes and refresh updated record
-        await db.commit()
+        try:
+            await db.commit()
+        except IntegrityError as e:
+            # Handle database integrity constraint violations as a safety net
+            await db.rollback()
+            raise HTTPException(
+                status_code=409,
+                detail="This value already exists or violates a database constraint"
+            )
+        
         await db.refresh(record)
 
         return record

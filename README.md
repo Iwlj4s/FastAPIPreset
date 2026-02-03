@@ -37,6 +37,13 @@ All configurations are clearly documented and easy to modify for your specific n
 
    - Generic Response Schemas with type safety
 
+- **🔍 Data Validation System** *(Early Development)*
+  - `ValidationService` for centralized data integrity checks
+  - Global uniqueness validation (prevent duplicates across database)
+  - Per-user uniqueness validation (prevent duplicates within user's records)
+  - Early error detection (validation before database commit)
+  - Extensible rule-based configuration
+
 - **Modern Response Handling**
   - Generic `DataResponse[T]` for single object endpoints
   - Generic `ListResponse[T]` for collection endpoints  
@@ -96,6 +103,10 @@ FastAPIPreset/
 │   ├── password_helper.py       # Password hashing and verification
 │   ├── token_helper.py          # Token extraction and validation
 │   └── user_helper.py           # User authentication logic
+├── services/                   # Business logic and validation services
+│   ├── validation_services.py   # Data validation and uniqueness checks
+│   ├── item_services.py         # Item-related business logic
+│   └── user_services.py         # User-related business logic
 ├── repository/                 # Business logic layer
 │   ├── item_repository.py       # Item business logic
 │   └── user_repository.py       # User business logic
@@ -314,23 +325,24 @@ And it's kinda pretty, lol
 ## 📚 API Endpoints
 
 ### Authentication Endpoints
-- `POST /users/API/sign_up` - User registration
-- `POST /users/API/sign_in` - User login
-- `POST /users/API/logout` - User logout
-- `GET /users/API/me/` - Get current user profile
+- `POST /api/v1/users/sign_up` - User registration
+- `POST /api/v1/users/sign_in` - User login (returns JWT token in cookie)
+- `POST /api/v1/users/logout` - User logout (clears authentication cookie)
 
-### User Management
-- `GET /users/API/user/{user_id}` - Get user by ID
-- `GET /users/API/users_list` - Get all users
-- `GET /users/API/me/items` - Get current user's items
-- `GET /users/API/me/item/{item_id}` - Get specific user item
+### User Management (Protected Routes)
+- `GET /api/v1/users/` - Get all users (public)
+- `GET /api/v1/users/user/{user_id}` - Get user profile by ID (public)
+- `GET /api/v1/users/me/` - Get current authenticated user's profile (protected)
+- `PATCH /api/v1/users/me/update` - Update current user profile (protected, with ValidationService)
+- `GET /api/v1/users/me/items` - Get all items of current user (protected)
+- `GET /api/v1/users/me/item/{item_id}` - Get specific item of current user (protected)
 
 ### Item Management
-- `POST /items/API/create_item` - Create new item (authenticated)
-- `PATCH /items/API/update_item{item_id}` - Update item (authenticated)
-- `POST /items/API/delete_item/{item_id}` - Delete item (owner only)
-- `GET /items/API/get_item/{item_id}` - Get item by ID (public)
-- `GET /items/API/items` - Get all items (public)
+- `GET /api/v1/items/` - Get all items with user info (public)
+- `GET /api/v1/items/item/{item_id}` - Get item by ID with user info (public)
+- `POST /api/v1/items/create_item` - Create new item (protected, with ValidationService)
+- `PATCH /api/v1/items/update_item/{item_id}` - Update item (protected, with ValidationService, ownership verification)
+- `DELETE /api/v1/items/delete_item/{item_id}` - Delete item (protected, owner only)
 
 ---
 
@@ -481,6 +493,143 @@ Standard Dependencies
 
 ---
 
+## 🔍 Validation System
+
+### ValidationService (Early Development)
+
+The `ValidationService` is a centralized validation system that ensures data integrity by checking for duplicate values in globally unique and per-user unique fields **before database operations**.
+
+**Current Status:** ⚠️ *This feature is actively being developed and currently supports update operations. Future versions will extend it to create and delete operations.*
+
+#### Key Features
+
+- **Global Unique Field Validation** - Prevents duplicate values across entire database
+  - Example: Email addresses, usernames must be globally unique
+  
+- **Per-User Unique Field Validation** - Prevents duplicates within a single user's records
+  - Example: Item names must be unique per user (one user cannot have two items named "My Item")
+
+- **Extensible Rules** - Easy to add new validation rules without changing validation logic
+
+#### How It Works
+
+```
+Request Data
+    ↓
+ValidationService.validate_update()
+    ↓
+Check VALIDATION_RULES for model
+    ↓
+For each unique field in update data:
+  - Check if value already exists (exclude current record)
+  - Raise HTTPException(409) if duplicate found
+    ↓
+✓ All checks pass → Continue to database update
+✗ Duplicate found → Raise HTTPException(409) before commit
+```
+
+#### VALIDATION_RULES Configuration
+
+```python
+# In services/validation_services.py
+VALIDATION_RULES = {
+    "User": {
+        "unique_fields": ["email", "name"],           # Globally unique
+        "required_fields": ["email", "name", "password"],
+        # "unique_per_user_fields": []  # Users don't have per-user unique fields
+    },
+
+    "Item": {
+        "unique_fields": [],                          # Items can have same name globally
+        "required_fields": ["name", "user_id"],
+        "unique_per_user_fields": ["name"]           # But not per user
+    }
+}
+```
+
+#### Adding Validation Rules for New Models
+
+1. **Add model to VALIDATION_RULES:**
+
+```python
+VALIDATION_RULES = {
+    # ... existing rules ...
+    
+    "Project": {
+        "unique_fields": ["slug"],                    # Projects have globally unique slugs
+        "required_fields": ["name", "slug", "user_id"],
+        "unique_per_user_fields": ["name", "code"]   # But names and codes unique per user
+    }
+}
+```
+
+2. **That's it!** `ValidationService` automatically handles all validation.
+
+#### Usage Example
+
+```python
+# In repository or DAO layer
+from services.validation_services import ValidationService
+
+# Before updating a record:
+await ValidationService.validate_update(
+    model_class=models.Item,
+    record=existing_item,              # Current database record
+    update_data={"name": "New Name"},  # Data being updated
+    db=db_session
+)
+
+# If duplicate found → HTTPException(409) raised
+# If validation passes → Safe to proceed with update
+await db_session.commit()
+```
+
+#### Response Examples
+
+**Successful Update (No Duplicates):**
+```json
+{
+  "status": 200,
+  "message": "Item updated successfully",
+  "data": { ... }
+}
+```
+
+**Validation Error (Duplicate Found):**
+```json
+{
+  "status": 409,
+  "detail": "Value 'Gaming Laptop' for field 'name' already exists for this user"
+}
+```
+
+#### Technical Details
+
+**Method: `check_field_duplicates`**
+- Checks if a value exists for a field across entire table
+- Excludes current record from search (allows keeping same value during update)
+- Returns: `True` if duplicate found, `False` if safe
+
+**Method: `check_field_duplicates_per_user`**
+- Checks if a value exists for a field within specific user's records
+- Requires model to have `user_id` attribute
+- Excludes current record by ID
+- Returns: `True` if duplicate found for user, `False` if safe
+
+**Safety Net: IntegrityError Handling**
+```python
+# In GeneralDAO.update_record()
+try:
+    await db.commit()
+except IntegrityError as e:
+    # Catches any database constraint violations
+    # that ValidationService might have missed
+    await db.rollback()
+    raise HTTPException(status_code=409, detail="...")
+```
+
+---
+
 ## 🛠️ Development
 
 ### Architecture Overview
@@ -523,8 +672,12 @@ This preset follows a clean architecture pattern:
 
    - Database configuration
 
+5. **Services Layer** (`/services/`)
+   - `ValidationService` - Centralized data validation and uniqueness checks
+   - Item services - Item-related business logic
+   - User services - User-related business logic
 
-5. **Helpers** (`/helpers/`)
+6. **Helpers** (`/helpers/`)
    - Utility functions
 
    - JWT token management
@@ -617,7 +770,29 @@ class NewModelDAO:
         return new_model
 ```
 
-5. **Add Repository Logic**
+**Note:** Updates are handled universally through `GeneralDAO.update_record()` which automatically uses `ValidationService` for validation. No need to create custom update methods!
+
+5. **Add Validation Rules (If Needed)**
+
+If your model has unique fields, add validation rules to `ValidationService`:
+
+```python
+# In services/validation_services.py - Update VALIDATION_RULES dictionary
+
+VALIDATION_RULES = {
+    # ... existing models ...
+    
+    "NewModel": {
+        "unique_fields": [],                      # Fields unique across entire DB
+        "required_fields": ["name", "user_id"],
+        "unique_per_user_fields": ["name"]       # Fields unique per user
+    }
+}
+```
+
+Then `ValidationService` automatically validates these fields on updates!
+
+6. **Add Repository Logic**
 ```python
 # In repository/new_model_repository.py
 async def create_new_model(
@@ -632,7 +807,7 @@ async def create_new_model(
         user_id=current_user.id
     )
     
-    return response_schemasDataResponse[NewModelResponse](
+    return response_schemas.DataResponse[NewModelResponse](
         message="New model created successfully",
         status_code=200,
         data=response_schemas.NewModelResponse(
@@ -644,7 +819,7 @@ async def create_new_model(
     )
 ```
 
-6. **Define API Routes**
+7. **Define API Routes**
 ```python
 # In routes/new_model_router.py
 @router.post("/create_new_model")
@@ -736,6 +911,25 @@ echo=True  # Set to False in production
 
 ---
 
+## 🚀 Recent Updates
+
+### ValidationService (Early Development)
+
+A new **data validation system** has been added to ensure data integrity at the application level, before database operations. 
+
+**What Changed:**
+- Added `ValidationService` for centralized validation
+- Moved validation logic from DAO layer to service layer
+- Early error detection (409 before commit, not IntegrityError from DB)
+- Easy to extend - just add rules to `VALIDATION_RULES` dictionary
+
+**Current Implementation:**
+- Supports update operations with `validate_update()` method
+- Checks globally unique fields and per-user unique fields
+- Automatically integrated into `GeneralDAO.update_record()`
+
+---
+
 ## 🤝 Contributing
 
 This preset is designed to be extended and customized for specific project needs. Feel free to:
@@ -751,6 +945,7 @@ This preset is designed to be extended and customized for specific project needs
 ## 📝 License
 
 This FastAPI Preset is open-source and available for educational and commercial use. Please attribute the original source when using this as a foundation for your projects.
+
 
 ---
 
