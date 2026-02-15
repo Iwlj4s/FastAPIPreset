@@ -11,13 +11,15 @@ from database import models, schema, response_schemas
 
 from helpers import password_helper, user_helper
 from helpers import exception_helper
-from helpers.exception_helper import CheckHTTP404NotFound, CheckHTTP409Conflict, CheckHTTP403FORBIDDEN_BOOL
+from helpers.exception_helper import CheckHTTP401Unauthorized, CheckHTTP404NotFound, CheckHTTP409Conflict, CheckHTTP403FORBIDDEN_BOOL
 from helpers.token_helper import get_token, verify_token
 
 from DAO.general_dao import GeneralDAO
 from DAO.user_dao import UserDAO
 
 from helpers import password_helper
+from services.item_services import ItemService
+from services.user_services import UserService
 
 
 """
@@ -69,17 +71,13 @@ async def sign_up(request: schema.User,
     await db.refresh(new_user)
     print(f"   User created with ID: {new_user.id}")
 
+    user_data = await UserService.create_user_response(user=new_user)
+
     return response_schemas.UserCreateResponse(
         message="User has been created successfully",
         status_code=200,
-        data=response_schemas.UserResponse(
-            id=new_user.id,
-            name=new_user.name,
-            email=new_user.email,
-            bio=new_user.bio
-        )
+        data=user_data
     )
-
 
 async def login(request: schema.UserSignIn,
                 response: Response,
@@ -125,15 +123,17 @@ async def get_current_user(db: AsyncSession = Depends(get_db),
     user_id = verify_token(token=token)
     print("user_id in get current user: ", user_id)
     if not user_id:
-        return {
-            'message': "Token not found",
-            'status_code': 401,
-        }
+        return HTTPException(status_code=401, detail="User is unauthorized")
+    
     user = await GeneralDAO.get_record_by_id(record_id=user_id,
                                              model=models.User, 
                                              db=db)
+    
+    await CheckHTTP401Unauthorized(founding_item=user, text="User is unauthorized")
 
-    return user
+    user_data = await UserService.create_user_response(user=user)
+
+    return user_data
 
 
 async def update_me(user_id: int,
@@ -169,15 +169,12 @@ async def update_me(user_id: int,
                                                   update_data=user_data,
                                                   db=db)
 
+    user_data = await UserService.create_user_response(user=updated_user)
+
     return response_schemas.UserUpdateResponse(
         message="User has been updated",
         status_code=200,
-        data = response_schemas.UserResponse(
-            id=updated_user.id,
-            name=updated_user.name,
-            email=updated_user.email,
-            bio=updated_user.bio
-        )
+        data = user_data
     )
 
 async def get_current_user_items(current_user: schema.User, 
@@ -222,18 +219,13 @@ async def get_current_user_item(item_id: int,
                                              item_id=item_id)
     await CheckHTTP404NotFound(founding_item=item, text="Item not found")
 
+    item_data = await ItemService.create_items_detail_response(item=item)
+
     return response_schemas.ItemDetailResponse(
         message="Item retrieved successfully",
         status_code=200,
-        data=response_schemas.ItemWithUserResponse(
-            id=item.id,
-            name=item.name,
-            description=item.description,
-            user_id=item.user.id,
-            user_name=item.user.name,
-            user_email=item.user.email
+        data=item_data
         )
-    )
 
 
 async def get_all_users(db: AsyncSession) -> response_schemas.UserListResponse:

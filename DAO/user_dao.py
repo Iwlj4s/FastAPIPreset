@@ -78,24 +78,10 @@ class UserDAO:
         """
         user = await cls.get_user_by_id(user_id=user_id, db=db)
         await exception_helper.CheckHTTP404NotFound(founding_item=user, text="User not found")
+        
+        user_with_items = await UserService.create_user_with_items_response(user=user)
 
-        user_data = response_schemas.UserWithItemsResponse(
-            id=user.id,
-            name=user.name,
-            email=user.email,
-            bio=user.bio,
-            items=[
-                response_schemas.ItemResponse(
-                    id=item.id,
-                    name=item.name,
-                    description=item.description,
-                    user_id=item.user_id
-                )
-                for item in user.item
-            ]
-        )
-
-        return user_data
+        return user_with_items
     
     @classmethod
     async def get_all_users(cls,

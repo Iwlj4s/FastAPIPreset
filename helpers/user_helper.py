@@ -50,6 +50,7 @@ async def take_access_token_for_user(db: AsyncSession,
                         value=access_token, 
                         httponly=True)
 
+    # TODO: Think about how to do creating this response in user_services.py
     return response_schemas.CurrentUserResponse(
         id=user.id,
         name=user.name,
