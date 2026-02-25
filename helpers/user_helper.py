@@ -7,6 +7,7 @@ from database import response_schemas, schema
 from helpers import password_helper
 from helpers.exception_helper import CheckHTTP403FORBIDDEN_BOOL, CheckHTTP404NotFound
 from helpers.jwt_helper import create_access_token
+from services.user_services import UserService
 
 
 """
@@ -49,12 +50,7 @@ async def take_access_token_for_user(db: AsyncSession,
     response.set_cookie(key="user_access_token", 
                         value=access_token, 
                         httponly=True)
+    
+    new_user = await UserService.create_current_user_response(user=user, token=access_token)
 
-    # TODO: Think about how to do creating this response in user_services.py
-    return response_schemas.CurrentUserResponse(
-        id=user.id,
-        name=user.name,
-        email=user.email,
-        bio=user.bio,
-        user_access_token=access_token
-    )
+    return new_user

@@ -43,8 +43,6 @@ class UserService:
 
         :return: response_schemas.UserResponse - Formatted user ready for API response
         """
-        
-
         return response_schemas.UserResponse(
             id=user.id,
             name=user.name,
@@ -71,3 +69,12 @@ class UserService:
             items=items
         )
     
+    @staticmethod
+    async def create_current_user_response(user: models.User, token: str) -> response_schemas.CurrentUserResponse:
+        user = await UserService.create_user_response(user=user)
+
+        return response_schemas.CurrentUserResponse(
+            **user.dict(),
+            user_access_token=token
+        )
+
