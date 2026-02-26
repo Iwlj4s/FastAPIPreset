@@ -51,6 +51,7 @@ async def take_access_token_for_user(db: AsyncSession,
                         value=access_token, 
                         httponly=True)
     
+    # Create response data using UserResponse schema to avoid recursion
     new_user = await UserService.create_current_user_response(user=user, token=access_token)
 
     return new_user

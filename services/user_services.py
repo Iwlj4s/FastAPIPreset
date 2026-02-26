@@ -52,7 +52,13 @@ class UserService:
     
     @staticmethod
     async def create_user_with_items_response(user: models.User) -> response_schemas.UserWithItemsResponse:
-        """Creating UserWithItemsResponse from SQLAlchemy User model"""
+        """
+        Create UserWithItemsResponse from SQLAlchemy User model with related items.
+
+        :param user: models.User - User database model with related items
+
+        :return: response_schemas.UserWithItemsResponse - Formatted user with items for API response
+        """
         user_data = await UserService.create_user_response(user=user)
         items = [
              response_schemas.ItemResponse(
@@ -64,17 +70,25 @@ class UserService:
             for item in user.item
         ]
 
-        return response_schemas.UserWithItemsResponse(
-            **user_data.dict(),  # Transform to dict cause UserWithItemsResponse wait named args for fields
+        return response_schemas.UserWithItemsResponse( 
+            **user_data.dict(),  # Transform to dict cause UserWithItemsResponse wait named args for fields 
             items=items
         )
     
     @staticmethod
     async def create_current_user_response(user: models.User, token: str) -> response_schemas.CurrentUserResponse:
+        """
+        Create CurrentUserResponse from SQLAlchemy User model and JWT token.
+
+        :param user: models.User - User database model
+        :param token: str - JWT access token for the authenticated user
+
+        :return: response_schemas.CurrentUserResponse - Formatted current user with access token for API response
+        """
         user = await UserService.create_user_response(user=user)
 
         return response_schemas.CurrentUserResponse(
-            **user.dict(),
+            **user.dict(),  # Transform to dict cause CurrentUserResponse wait named args for fields
             user_access_token=token
         )
 

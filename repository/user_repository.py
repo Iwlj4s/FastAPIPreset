@@ -71,6 +71,7 @@ async def sign_up(request: schema.User,
     await db.refresh(new_user)
     print(f"   User created with ID: {new_user.id}")
 
+    # Create response data using UserResponse schema to avoid recursion
     user_data = await UserService.create_user_response(user=new_user)
 
     return response_schemas.UserCreateResponse(
@@ -131,6 +132,7 @@ async def get_current_user(db: AsyncSession = Depends(get_db),
     
     await CheckHTTP401Unauthorized(founding_item=user, text="User is unauthorized")
 
+    # Create response data using UserResponse schema to avoid recursion
     user_data = await UserService.create_user_response(user=user)
 
     return user_data
@@ -169,6 +171,7 @@ async def update_me(user_id: int,
                                                   update_data=user_data,
                                                   db=db)
 
+    # Create response data using UserResponse schema to avoid recursion
     user_data = await UserService.create_user_response(user=updated_user)
 
     return response_schemas.UserUpdateResponse(
@@ -194,6 +197,7 @@ async def get_current_user_items(current_user: schema.User,
     # Use Response Schema to avoid recursion
     user_data = await UserDAO.get_user_with_items(user_id=current_user.id, db=db)
 
+    # Create response data using UserWithItemsResponse schema to avoid recursion
     return response_schemas.UserWithItemsDataResponse(
         message="User items retrieved successfully",
         status_code=200,
@@ -219,6 +223,7 @@ async def get_current_user_item(item_id: int,
                                              item_id=item_id)
     await CheckHTTP404NotFound(founding_item=item, text="Item not found")
 
+    # Create response data using ItemDetailResponse schema to avoid recursion
     item_data = await ItemService.create_items_detail_response(item=item)
 
     return response_schemas.ItemDetailResponse(

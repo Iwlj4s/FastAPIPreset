@@ -354,6 +354,8 @@ Request Context is a pattern that provides a convenient way to pass common depen
 ### Two Approaches to Dependencies
 ### Approach 1: Request Context (Recommended)
 
+<details><summary>Click to expand request context example</summary>
+
 #### Using context:
 
 ```python
@@ -376,7 +378,11 @@ Advantages:
 - Centralized management
 - Simplifies testing
 
+</details>
+
 ### Approach 2: Standard FastAPI Dependencies
+
+<details><summary>Click to expand explicit dependency example</summary>
 
 ### Without context:
 
@@ -397,6 +403,8 @@ When to use:
 -   When you need explicit control over dependencies
 -   Better clarity for beginners
 
+</details>
+
 
 ### How to Add New Dependencies to Context
 
@@ -406,14 +414,14 @@ When to use:
     @dataclass
     class RequestContext:
         db: AsyncSession
-        current_user: "schema.User"
+        current_user: any
         logger: logging.Logger  # New dependency
         cache: RedisClient     # New dependency
 
     Update context factory:
 
     async def get_request_context(db: AsyncSession = Depends(get_db),
-                                  current_user: "schema.User" = Depends(get_current_user),
+                                  current_user: any = Depends(get_current_user),
                                   logger: logging.Logger = Depends(get_logger),      # New 
                                   cache: RedisClient = Depends(get_redis_client)     # New 
                                   ) -> RequestContext:
@@ -752,6 +760,9 @@ class NewModelResponse(BaseModel):
 
 # No need to create response wrapper classes - use generics!
 ```
+*Tip:* once you have schema classes like this, look at `services/user_services.py` for examples of
+converting SQLAlchemy models to response models. The same pattern is used by
+`ItemService` and the new `create_current_user_response` helper.
 
 4. **Implement DAO Methods**
 ```python
