@@ -1,6 +1,6 @@
 from typing import List
 from sqlalchemy.ext.asyncio import AsyncSession
-from database import response_schemas
+from database import models, response_schemas
 
 class ItemService:
     """
@@ -37,3 +37,20 @@ class ItemService:
 
         return items_list
     
+    @staticmethod
+    async def create_items_detail_response(item: models.Item) -> response_schemas.ItemDetailResponse:
+        """
+        Create ItemDetailResponse from SQLAlchemy Item model with related user.
+        
+        :param item: models.Item - Item database model with related user
+        :return: response_schemas.ItemDetailResponse - Formatted item with user data for API
+        """
+
+        return response_schemas.ItemWithUserResponse(
+            id=item.id,
+            name=item.name,
+            description=item.description,
+            user_id=item.user.id,
+            user_name=item.user.name,
+            user_email=item.user.email
+        )

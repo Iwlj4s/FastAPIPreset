@@ -113,13 +113,14 @@ class UserResponse(BaseModel):
 
 class CurrentUserResponse(UserResponse):
     """
-    Basic item schema without relationships to avoid recursion.
-    Contains essential item information for API responses.
-    
-    Fields:
-    - user_access_token: User token for get current user
-    
-    Use when you need item data without nested user information.
+        Schema for current authenticated user response, extends UserResponse with access token.
+        Contains essential user information along with JWT access token for authentication.
+        Fields:
+        - id: Unique user identifier
+        - name: User's display name
+        - email: User's email address
+        - bio: User's biography
+        - user_access_token: JWT token for authenticating subsequent requests
     """
     user_access_token: str
 
